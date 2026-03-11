@@ -617,11 +617,15 @@ function startClock() {
   syncClockToDb();
 }
 
-function stopClock() {
+function stopClockLocal() {
   state.clock.running = false;
   clearInterval(state.clock.interval);
   document.getElementById('clockStartBtn').textContent = '▶ START';
   document.getElementById('clockStartBtn').className = 'clock-btn start';
+}
+
+function stopClock() {
+  stopClockLocal();
   syncClockToDb();
 }
 
@@ -655,9 +659,11 @@ async function syncClockToDb() {
 // Aplikuje stav hodin přijatý z DB (pro druhé zařízení)
 function applyClockFromDb(match) {
   const wasRunning = state.clock.running;
-  // Zastavit lokální interval vždy
+  // Zastavit lokální interval vždy — bez zápisu do DB
   clearInterval(state.clock.interval);
   state.clock.running = false;
+  document.getElementById('clockStartBtn').textContent = '▶ START';
+  document.getElementById('clockStartBtn').className = 'clock-btn start';
 
   if (match.clock_running && match.clock_started_at) {
     // Dopočítat aktuální čas: uložené sekundy mínus uplynulý čas od startu
@@ -1052,9 +1058,9 @@ async function loadMatch(matchId, code) {
   document.getElementById('matchCodeDisplay').textContent = code;
   localStorage.setItem('axono_last_match', JSON.stringify({ matchId, code }));
 
-  // Reset local state
+  // Reset local state — bez zápisu do DB
   Object.assign(state, { teamA:0, teamB:0, period:1, goals:[], penalties:[], goalTeam:'A', penTeam:'A', rosterTeam:'A', goalId:0, penId:0, playerId:0, rosters:{A:[],B:[]}, clock:{seconds:1200,running:false,interval:null} });
-  stopClock();
+  stopClockLocal();
 
   // Fetch match data
   const { data: match } = await sb.from('matches').select('*').eq('id', matchId).single();
