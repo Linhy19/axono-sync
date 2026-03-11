@@ -595,36 +595,95 @@ let state = {
 const PERIODS = ['','TŘETINA 1','TŘETINA 2','TŘETINA 3','PRODLOUŽENÍ','NÁJEZDY'];
 
 // ─── CLOCK ────────────────────────────────────────────────────────────────────
+// Princip: do DB se ukládá clock_seconds + clock_running + clock_started_at
+// Druhé zařízení si aktuální čas dopočítá: seconds - (now - started_at)
+// Tím odpadá potřeba ukládat každou sekundu.
+
 function toggleClock() { state.clock.running ? stopClock() : startClock(); }
+
 function startClock() {
   if (state.clock.running) return;
   state.clock.running = true;
+  state.clock.startedAt = Date.now();
   document.getElementById('clockStartBtn').textContent = '⏸ PAUZA';
   document.getElementById('clockStartBtn').className = 'clock-btn stop';
   state.clock.interval = setInterval(() => {
     state.clock.seconds = Math.max(0, state.clock.seconds - 1);
     renderClock();
     tickPenalties();
-    if (state.clock.seconds === 0) { stopClock(); showToast('⏱ Konec třetiny!'); }
+    if (state.clock.seconds === 0) { stopClock(); syncClockToDb(); showToast('⏱ Konec třetiny!'); }
   }, 1000);
+  syncClockToDb();
 }
+
 function stopClock() {
   state.clock.running = false;
   clearInterval(state.clock.interval);
   document.getElementById('clockStartBtn').textContent = '▶ START';
   document.getElementById('clockStartBtn').className = 'clock-btn start';
+  syncClockToDb();
 }
+
 function resetClock() {
   stopClock();
   state.clock.seconds = state.period >= 4 ? 5*60 : 20*60;
   renderClock();
+  syncClockToDb();
 }
+
 function renderClock() {
   const s = state.clock.seconds;
   const str = `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
   const el = document.getElementById('clockDisplay');
   el.textContent = str;
   el.className = 'clock-display' + (state.clock.running ? (s < 60 ? ' warning' : ' running') : '');
+}
+
+async function syncClockToDb() {
+  if (!currentMatchId) return;
+  try {
+    await sb.from('matches').update({
+      clock_seconds: state.clock.seconds,
+      clock_running: state.clock.running,
+      clock_started_at: state.clock.running ? new Date().toISOString() : null,
+      updated_at: new Date().toISOString()
+    }).eq('id', currentMatchId);
+  } catch(e) { console.warn('Clock sync failed:', e); }
+}
+
+// Aplikuje stav hodin přijatý z DB (pro druhé zařízení)
+function applyClockFromDb(match) {
+  const wasRunning = state.clock.running;
+  // Zastavit lokální interval vždy
+  clearInterval(state.clock.interval);
+  state.clock.running = false;
+
+  if (match.clock_running && match.clock_started_at) {
+    // Dopočítat aktuální čas: uložené sekundy mínus uplynulý čas od startu
+    const elapsed = Math.floor((Date.now() - new Date(match.clock_started_at).getTime()) / 1000);
+    state.clock.seconds = Math.max(0, match.clock_seconds - elapsed);
+    // Spustit lokální interval (bez DB volání — jen UI)
+    state.clock.running = true;
+    document.getElementById('clockStartBtn').textContent = '⏸ PAUZA';
+    document.getElementById('clockStartBtn').className = 'clock-btn stop';
+    state.clock.interval = setInterval(() => {
+      state.clock.seconds = Math.max(0, state.clock.seconds - 1);
+      renderClock();
+      tickPenalties();
+      if (state.clock.seconds === 0) {
+        clearInterval(state.clock.interval);
+        state.clock.running = false;
+        document.getElementById('clockStartBtn').textContent = '▶ START';
+        document.getElementById('clockStartBtn').className = 'clock-btn start';
+        showToast('⏱ Konec třetiny!');
+      }
+    }, 1000);
+  } else {
+    state.clock.seconds = match.clock_seconds ?? state.clock.seconds;
+    document.getElementById('clockStartBtn').textContent = '▶ START';
+    document.getElementById('clockStartBtn').className = 'clock-btn start';
+  }
+  renderClock();
 }
 
 // ─── PERIOD ───────────────────────────────────────────────────────────────────
@@ -1002,10 +1061,10 @@ async function loadMatch(matchId, code) {
     state.teamA = match.score_a;
     state.teamB = match.score_b;
     state.period = match.period;
-    state.clock.seconds = match.clock_seconds;
     document.getElementById('teamAName').value = match.team_a_name;
     document.getElementById('teamBName').value = match.team_b_name;
     document.getElementById('periodDisplay').textContent = PERIODS[state.period] || 'TŘETINA 1';
+    applyClockFromDb(match); // správně dopočítá čas i pokud hodiny běží
   }
 
   // Fetch goals
@@ -1047,11 +1106,12 @@ function subscribeRealtime(matchId) {
       const { data } = await sb.from('matches').select('*').eq('id', matchId).single();
       if (!data) return;
       state.teamA = data.score_a; state.teamB = data.score_b;
-      state.period = data.period; state.clock.seconds = data.clock_seconds;
+      state.period = data.period;
       document.getElementById('teamAName').value = data.team_a_name;
       document.getElementById('teamBName').value = data.team_b_name;
       document.getElementById('periodDisplay').textContent = PERIODS[state.period];
-      updateScoreboard(); renderClock(); syncTeamNames();
+      updateScoreboard(); syncTeamNames();
+      applyClockFromDb(data); // synchronizuje čas + stav běhu hodin
     })
     .on('postgres_changes', { event: '*', schema: 'public', table: 'goals', filter: `match_id=eq.${matchId}` }, async () => {
       const { data } = await sb.from('goals').select('*').eq('match_id', matchId).order('created_at');
