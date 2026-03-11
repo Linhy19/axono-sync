@@ -560,8 +560,17 @@
 </div>
 <div class="toast" id="toast"></div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script>
+// Kontrola zda se Supabase načetl
+if (typeof supabase === 'undefined') {
+  document.body.insertAdjacentHTML('afterbegin',
+    '<div style="background:#d10020;color:#fff;padding:14px 16px;font-family:Inter,sans-serif;font-size:13px;text-align:center;position:fixed;top:0;left:0;right:0;z-index:9999;">' +
+    '⚠️ Supabase se nenačetl — zkuste vypnout blokování sledování v prohlížeči, nebo použijte Chrome/Firefox.' +
+    '</div>'
+  );
+}
+
 // ─── SUPABASE CONFIG ─────────────────────────────────────────────────────────
 // 👉 Sem vložte vaše údaje ze Supabase (Project Settings → API)
 const SUPABASE_URL = 'https://wdwmjjbcphntymodnbub.supabase.co';
@@ -1102,8 +1111,8 @@ async function loadMatch(matchId, code) {
 function subscribeRealtime(matchId) {
   if (realtimeChannel) sb.removeChannel(realtimeChannel);
   realtimeChannel = sb.channel(`match-${matchId}`)
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'matches', filter: `id=eq.${matchId}` }, async () => {
-      const { data } = await sb.from('matches').select('*').eq('id', matchId).single();
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'matches', filter: `id=eq.${matchId}` }, async (payload) => {
+      const data = payload.new;
       if (!data) return;
       state.teamA = data.score_a; state.teamB = data.score_b;
       state.period = data.period;
@@ -1111,7 +1120,7 @@ function subscribeRealtime(matchId) {
       document.getElementById('teamBName').value = data.team_b_name;
       document.getElementById('periodDisplay').textContent = PERIODS[state.period];
       updateScoreboard(); syncTeamNames();
-      applyClockFromDb(data); // synchronizuje čas + stav běhu hodin
+      applyClockFromDb(data);
     })
     .on('postgres_changes', { event: '*', schema: 'public', table: 'goals', filter: `match_id=eq.${matchId}` }, async () => {
       const { data } = await sb.from('goals').select('*').eq('match_id', matchId).order('created_at');
