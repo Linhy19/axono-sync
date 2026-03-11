@@ -629,7 +629,7 @@ function stopClockLocal() {
 
 function stopClock() {
   stopClockLocal();
-  syncClockToDb();
+  if (currentMatchId) syncClockToDb();
 }
 
 function resetClock() {
@@ -661,8 +661,7 @@ async function syncClockToDb() {
 
 // Aplikuje stav hodin přijatý z DB (pro druhé zařízení)
 function applyClockFromDb(match) {
-  const wasRunning = state.clock.running;
-  // Zastavit lokální interval vždy — bez zápisu do DB
+  // Zastavit lokální interval — bez zápisu do DB
   clearInterval(state.clock.interval);
   state.clock.running = false;
   document.getElementById('clockStartBtn').textContent = '▶ START';
@@ -671,8 +670,14 @@ function applyClockFromDb(match) {
   if (match.clock_running && match.clock_started_at) {
     // Dopočítat aktuální čas: uložené sekundy mínus uplynulý čas od startu
     const elapsed = Math.floor((Date.now() - new Date(match.clock_started_at).getTime()) / 1000);
-    state.clock.seconds = Math.max(0, match.clock_seconds - elapsed);
-    // Spustit lokální interval (bez DB volání — jen UI)
+    const seconds = Math.max(0, match.clock_seconds - elapsed);
+    // Pokud čas doběhl mezitím, jen zobraz 0 — nespouštěj toast
+    if (seconds === 0) {
+      state.clock.seconds = 0;
+      renderClock();
+      return;
+    }
+    state.clock.seconds = seconds;
     state.clock.running = true;
     document.getElementById('clockStartBtn').textContent = '⏸ PAUZA';
     document.getElementById('clockStartBtn').className = 'clock-btn stop';
@@ -689,27 +694,19 @@ function applyClockFromDb(match) {
       }
     }, 1000);
   } else {
-    state.clock.seconds = match.clock_seconds ?? state.clock.seconds;
-    document.getElementById('clockStartBtn').textContent = '▶ START';
-    document.getElementById('clockStartBtn').className = 'clock-btn start';
+    // Hodiny stojí — jen zobraz uložený čas, ale ne 0 pokud nebyl zápas spuštěn
+    state.clock.seconds = match.clock_seconds > 0 ? match.clock_seconds : (state.period >= 4 ? 5*60 : 20*60);
   }
   renderClock();
 }
 
 // ─── PERIOD ───────────────────────────────────────────────────────────────────
-function changePeriod(d) {
-  state.period = Math.max(1, Math.min(5, state.period + d));
-  document.getElementById('periodDisplay').textContent = PERIODS[state.period];
-  stopClock();
-  state.clock.seconds = state.period >= 4 ? 5*60 : 20*60;
-  renderClock();
-}
-
 // ─── SCOREBOARD ───────────────────────────────────────────────────────────────
 function adjustScore(team, delta) {
   if (team === 'A') { state.teamA = Math.max(0, state.teamA + delta); bumpScore('scoreA'); }
   else { state.teamB = Math.max(0, state.teamB + delta); bumpScore('scoreB'); }
   updateScoreboard();
+  saveMatchState();
 }
 function bumpScore(id) {
   const el = document.getElementById(id);
@@ -755,23 +752,6 @@ function selectRosterTeam(t) {
   document.getElementById('rosterOptA').classList.toggle('active', t==='A');
   document.getElementById('rosterOptB').classList.toggle('active', t==='B');
 }
-function addPlayer() {
-  const num = document.getElementById('playerNum').value.trim();
-  const name = document.getElementById('playerName').value.trim();
-  const cap = document.getElementById('playerCap').checked;
-  if (!name) { showToast('Zadejte jméno hráče!'); return; }
-  state.rosters[state.rosterTeam].push({ id: ++state.playerId, num: num||'?', name, cap });
-  document.getElementById('playerNum').value = '';
-  document.getElementById('playerName').value = '';
-  document.getElementById('playerCap').checked = false;
-  renderRosters();
-  updatePlayerSelects();
-  showToast(`✅ ${name} přidán`);
-}
-function removePlayer(team, id) {
-  state.rosters[team] = state.rosters[team].filter(p => p.id !== id);
-  renderRosters(); updatePlayerSelects();
-}
 function renderRosters() {
   ['A','B'].forEach(t => {
     const el = document.getElementById('roster'+t);
@@ -814,53 +794,12 @@ function selectGoalTeam(t) {
   fillSelect('scorerSelect', t, '— ze soupravy —');
   fillSelect('assistSelect', t, '— asistence ze soupravy —');
 }
-function addGoal() {
-  const scorer = resolvePlayer('scorerNumQuick', 'scorerSelect', state.goalTeam);
-  const assist = resolvePlayer('assistNumQuick', 'assistSelect', state.goalTeam);
-  const minute = document.getElementById('golMinuta').value.trim() || String(Math.floor((state.period>=4?5:20)*60-state.clock.seconds)/60|0);
-  if (!scorer) { showToast('Zadejte číslo nebo vyberte střelce!'); return; }
-  state.goals.push({ id:++state.goalId, team:state.goalTeam, teamName:getTeamName(state.goalTeam), scorer, assist, minute:minute||'—', period:state.period });
-  adjustScore(state.goalTeam, 1);
-  ['scorerNumQuick','assistNumQuick','golMinuta'].forEach(id => { document.getElementById(id).value=''; });
-  document.getElementById('scorerSelect').value='';
-  document.getElementById('assistSelect').value='';
-  showToast(`⚡ GÓL — ${scorer}!`, true);
-  renderEventLog(); updateEventCount();
-}
-function deleteGoal(id) {
-  const g = state.goals.find(x=>x.id===id); if(!g) return;
-  if (g.team==='A') state.teamA=Math.max(0,state.teamA-1); else state.teamB=Math.max(0,state.teamB-1);
-  state.goals = state.goals.filter(x=>x.id!==id);
-  updateScoreboard(); renderEventLog(); updateEventCount();
-}
-
 // ─── PENALTIES ────────────────────────────────────────────────────────────────
 function selectPenTeam(t) {
   state.penTeam = t;
   document.getElementById('penOptA').classList.toggle('active', t==='A');
   document.getElementById('penOptB').classList.toggle('active', t==='B');
   fillSelect('penPlayerSelect', t, '— ze soupravy —');
-}
-function addPenalty() {
-  const player = resolvePlayer('penNumQuick', 'penPlayerSelect', state.penTeam);
-  const mins = parseInt(document.getElementById('penType').value);
-  const minute = document.getElementById('penMinuta').value.trim();
-  const reason = document.getElementById('penReason').value.trim();
-  if (!player) { showToast('Zadejte číslo nebo vyberte hráče!'); return; }
-  state.penalties.push({ id:++state.penId, team:state.penTeam, teamName:getTeamName(state.penTeam), player, mins, reason, minute:minute||'—', period:state.period, remaining:mins>0?mins*60:-1, expired:false });
-  ['penNumQuick','penMinuta','penReason'].forEach(id=>{ document.getElementById(id).value=''; });
-  document.getElementById('penPlayerSelect').value='';
-  renderPenList(); renderPenBadges(); renderEventLog(); updateEventCount();
-  showToast(`🚫 Trest: ${player} (${mins>0?mins+' min':'do konce'})`);
-}
-function expirePenalty(id) {
-  const p = state.penalties.find(x=>x.id===id);
-  if (p) { p.expired=true; p.remaining=0; }
-  renderPenList(); renderPenBadges();
-}
-function deletePenalty(id) {
-  state.penalties = state.penalties.filter(x=>x.id!==id);
-  renderPenList(); renderPenBadges(); renderEventLog(); updateEventCount();
 }
 function tickPenalties() {
   let changed = false;
@@ -1040,25 +979,34 @@ function showJoinDialog() {
 }
 
 async function joinMatch() {
-  const raw = document.getElementById('joinCodeInput').value.trim().toUpperCase();
+  const raw = document.getElementById('joinCodeInput').value.trim().toUpperCase().replace(/\s/g, '');
   if (!raw) return;
-  // Auto-format: insert dash if missing
-  const code = raw.length === 6 && !raw.includes('-') ? raw.slice(0,3)+'-'+raw.slice(3) : raw;
+  // Auto-format: ABC234 → ABC-234, nebo ABC-234 zůstane
+  let code = raw;
+  if (raw.length === 6 && !raw.includes('-')) code = raw.slice(0,3)+'-'+raw.slice(3);
+  // Zkusit i bez pomlčky pokud s pomlčkou nenajde
   setSyncDot('saving');
   try {
-    const { data, error } = await sb.from('matches').select('*').eq('code', code).single();
-    if (error || !data) { showToast('❌ Zápas nenalezen: ' + code); setSyncDot('error'); return; }
+    let data = null;
+    // Pokus 1: přesný kód
+    const res1 = await sb.from('matches').select('*').eq('code', code).maybeSingle();
+    if (res1.data) { data = res1.data; }
+    // Pokus 2: bez pomlčky (pokud zadali ABCDEF)
+    if (!data && raw.length === 6) {
+      const res2 = await sb.from('matches').select('*').ilike('code', `${raw.slice(0,3)}%${raw.slice(3)}`).maybeSingle();
+      if (res2.data) { data = res2.data; code = data.code; }
+    }
+    if (!data) { showToast('❌ Zápas nenalezen: ' + code); setSyncDot('error'); return; }
     document.getElementById('joinDialog').style.display = 'none';
-    await loadMatch(data.id, code);
-    // Uložit kód do URL
+    await loadMatch(data.id, data.code);
     const newUrl = new URL(window.location.href);
-    newUrl.searchParams.set('match', code);
+    newUrl.searchParams.set('match', data.code);
     window.history.replaceState({}, '', newUrl);
-    showToast(`🔗 Připojeno: ${code}`, false);
+    showToast(`🔗 Připojeno: ${data.code}`, false);
     setSyncDot('ok');
   } catch(e) {
     setSyncDot('error');
-    showToast('❌ Chyba připojení');
+    showToast('❌ Chyba připojení: ' + e.message);
     console.error(e);
   }
 }
@@ -1082,9 +1030,11 @@ async function loadMatch(matchId, code) {
   if (copyBtn) copyBtn.style.display = 'block';
   localStorage.setItem('axono_last_match', JSON.stringify({ matchId, code }));
 
-  // Reset local state — bez zápisu do DB
+  // Reset local state — stopClockLocal nepíše do DB
+  clearInterval(state.clock.interval);
   Object.assign(state, { teamA:0, teamB:0, period:1, goals:[], penalties:[], goalTeam:'A', penTeam:'A', rosterTeam:'A', goalId:0, penId:0, playerId:0, rosters:{A:[],B:[]}, clock:{seconds:1200,running:false,interval:null} });
-  stopClockLocal();
+  document.getElementById('clockStartBtn').textContent = '▶ START';
+  document.getElementById('clockStartBtn').className = 'clock-btn start';
 
   // Fetch match data
   const { data: match } = await sb.from('matches').select('*').eq('id', matchId).single();
@@ -1186,10 +1136,9 @@ async function saveMatchState() {
 // Override saveState to use Supabase instead of localStorage
 function saveState() { saveMatchState(); }
 
-// ─── OVERRIDE ADD/DELETE TO USE SUPABASE ─────────────────────────────────────
+// ─── SUPABASE MUTACE ─────────────────────────────────────────────────────────
 
 // ── GOALS ──
-const _origAddGoal = addGoal;
 function addGoal() {
   const scorer = resolvePlayer('scorerNumQuick', 'scorerSelect', state.goalTeam);
   const assist = resolvePlayer('assistNumQuick', 'assistSelect', state.goalTeam);
@@ -1209,7 +1158,6 @@ function addGoal() {
   }
 }
 
-const _origDeleteGoal = deleteGoal;
 function deleteGoal(id) {
   const g = state.goals.find(x=>x.id===id); if(!g) return;
   if (g.team==='A') state.teamA=Math.max(0,state.teamA-1); else state.teamB=Math.max(0,state.teamB-1);
@@ -1221,7 +1169,6 @@ function deleteGoal(id) {
 }
 
 // ── PENALTIES ──
-const _origAddPenalty = addPenalty;
 function addPenalty() {
   const player = resolvePlayer('penNumQuick', 'penPlayerSelect', state.penTeam);
   const mins = parseInt(document.getElementById('penType').value);
@@ -1241,14 +1188,12 @@ function addPenalty() {
   }
 }
 
-const _origDeletePenalty = deletePenalty;
 function deletePenalty(id) {
   state.penalties = state.penalties.filter(x=>x.id!==id);
   renderPenList(); renderPenBadges(); renderEventLog(); updateEventCount();
   if (currentMatchId) sb.from('penalties').delete().eq('id', id);
 }
 
-const _origExpirePenalty = expirePenalty;
 function expirePenalty(id) {
   const p = state.penalties.find(x=>x.id===id);
   if (p) { p.expired=true; p.remaining=0; }
@@ -1257,7 +1202,6 @@ function expirePenalty(id) {
 }
 
 // ── PLAYERS ──
-const _origAddPlayer = addPlayer;
 function addPlayer() {
   const num = document.getElementById('playerNum').value.trim();
   const name = document.getElementById('playerName').value.trim();
@@ -1269,7 +1213,6 @@ function addPlayer() {
   document.getElementById('playerCap').checked = false;
   renderRosters(); updatePlayerSelects();
   showToast(`✅ ${name} přidán`);
-  // Domácí tým = automaticky uložit i do soupravy klubu
   if (state.rosterTeam === 'A' && currentMatchId) {
     if (confirm(`Přidat ${name} také do trvalé soupravy klubu?`)) {
       addPlayerToClub(num||'?', name, cap);
@@ -1280,22 +1223,23 @@ function addPlayer() {
   }
 }
 
-const _origRemovePlayer = removePlayer;
 function removePlayer(team, id) {
   state.rosters[team] = state.rosters[team].filter(p => p.id !== id);
   renderRosters(); updatePlayerSelects();
   if (currentMatchId) sb.from('players').delete().eq('id', id);
 }
 
-// ── PERIOD + SCORE ──
-const _origChangePeriod = changePeriod;
-function changePeriod(d) { _origChangePeriod(d); saveMatchState(); }
+// ── PERIOD ──
+function changePeriod(d) {
+  state.period = Math.max(1, Math.min(5, state.period + d));
+  document.getElementById('periodDisplay').textContent = PERIODS[state.period];
+  stopClockLocal();
+  state.clock.seconds = state.period >= 4 ? 5*60 : 20*60;
+  renderClock();
+  saveMatchState();
+}
 
-const _origAdjustScore = adjustScore;
-function adjustScore(team, delta) { _origAdjustScore(team, delta); saveMatchState(); }
-
-// ─── AUTOSAVE (fallback localStorage for clock ticks) ────────────────────────
-const SAVE_KEY = 'axono_hockeyball_v1';
+// ─── AUTOSAVE fallback ────────────────────────────────────────────────────────
 function saveLocalFallback() {
   try { localStorage.setItem(SAVE_KEY, JSON.stringify({ clockSeconds: state.clock.seconds, savedAt: Date.now() })); } catch(e) {}
 }
