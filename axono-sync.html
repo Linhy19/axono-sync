@@ -286,16 +286,44 @@
     .app { max-width: 100%; padding: 16px 40px 40px; }
     .tablet-layout {
       display: grid;
-      grid-template-columns: 400px 1fr;
-      gap: 24px;
+      grid-template-columns: 440px 1fr;
+      gap: 28px;
       align-items: start;
     }
     .tablet-left { display: flex; flex-direction: column; gap: 0; position: sticky; top: 16px; }
     .tablet-right { min-width: 0; }
-    .score-display { font-size: 90px; }
-    .clock-display { font-size: 44px; }
-    .entry-list { max-height: 360px; }
+
+    /* Větší a výraznější skóre */
+    .scoreboard { margin: 14px 0; }
+    .score-display { font-size: 120px; }
+    .team-card { padding: 28px 18px 20px; gap: 12px; }
+    .team-name-input { font-size: 21px; }
+    .score-btn { width: 52px; height: 52px; font-size: 26px; }
+    .clock-display { font-size: 50px; min-width: 130px; }
+    .clock-btn { padding: 12px 20px; font-size: 16px; }
+    .period-label { font-size: 20px; }
+    .pnav-btn { font-size: 15px; padding: 6px 12px; }
+    .vs-text { font-size: 22px; }
+
+    .entry-list { max-height: 400px; }
     .roster-cols { grid-template-columns: 1fr 1fr; gap: 16px; }
+
+    /* Dvousloupcový obsah uvnitř záložky */
+    .tab-two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      align-items: start;
+    }
+    .tab-two-col .entry-list { max-height: 480px; }
+    .tab-two-col .stats-list { max-height: 480px; overflow-y: auto; }
+  }
+
+  /* ── WIDE DESKTOP (1200px+) ── */
+  @media (min-width: 1200px) {
+    .tablet-layout { grid-template-columns: 480px 1fr; gap: 36px; }
+    .score-display { font-size: 140px; }
+    .clock-display { font-size: 56px; }
   }
 </style>
 </head>
@@ -570,11 +598,19 @@
   </div>
 
   <div class="section tab-content" id="tab-prehled">
-    <div class="section-header">
-      <div class="section-title">Přehled zápasu</div>
-      <span id="eventCount" style="font-size:10px;color:var(--muted);">0 událostí</span>
+    <div class="tab-two-col">
+      <div>
+        <div class="section-header">
+          <div class="section-title">Přehled zápasu</div>
+          <span id="eventCount" style="font-size:11px;color:var(--muted);">0 událostí</span>
+        </div>
+        <div class="entry-list" id="eventLog"><div class="empty-msg">Žádné události. Zápas začíná!</div></div>
+      </div>
+      <div>
+        <div class="section-header"><div class="section-title">Statistiky hráčů</div></div>
+        <div class="stats-list" id="statsListPrehled"><div class="empty-msg">Góly zobrazí statistiky.</div></div>
+      </div>
     </div>
-    <div class="entry-list" id="eventLog"><div class="empty-msg">Žádné události. Zápas začíná!</div></div>
   </div>
 
   <!-- STATISTIKY TAB -->
@@ -905,6 +941,7 @@ function updateEventCount() {
 // ─── STATS ────────────────────────────────────────────────────────────────────
 function renderStats() {
   const el = document.getElementById('statsList');
+  const el2 = document.getElementById('statsListPrehled');
   const players = {};
   state.goals.forEach(g=>{
     if(!players[g.scorer]) players[g.scorer]={name:g.scorer,team:g.teamName,goals:0,assists:0,pens:0};
@@ -913,8 +950,9 @@ function renderStats() {
   });
   state.penalties.forEach(p=>{ if(!players[p.player]) players[p.player]={name:p.player,team:p.teamName,goals:0,assists:0,pens:0}; players[p.player].pens+=(p.mins||0); });
   const sorted = Object.values(players).sort((a,b)=>(b.goals+b.assists)-(a.goals+a.assists));
-  if(!sorted.length){ el.innerHTML='<div class="empty-msg">Góly zobrazí statistiky hráčů.</div>'; return; }
-  el.innerHTML = sorted.map((p,i)=>`
+  const html = !sorted.length
+    ? '<div class="empty-msg">Góly zobrazí statistiky hráčů.</div>'
+    : sorted.map((p,i)=>`
     <div class="stat-row">
       <div class="stat-left"><span class="stat-name">${i===0?'⭐ ':''}${esc(p.name)}</span><span class="stat-team">${esc(p.team)}</span></div>
       <div class="stat-nums">
@@ -924,6 +962,8 @@ function renderStats() {
         <div class="stat-num"><div class="val" style="color:var(--hot)">${p.pens}</div><div class="lbl">TM</div></div>
       </div>
     </div>`).join('');
+  el.innerHTML = html;
+  if(el2) el2.innerHTML = html;
 }
 
 // ─── HELPERS ──────────────────────────────────────────────────────────────────

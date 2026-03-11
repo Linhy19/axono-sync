@@ -258,6 +258,9 @@
 
   .empty-msg { text-align: center; color: var(--muted); font-size: 13px; padding: 22px; font-style: italic; }
 
+  /* d-right-cols: mobil = pod sebou, tablet = vedle sebe */
+  .d-right-cols { display: flex; flex-direction: column; gap: 0; }
+
   @media (max-width: 360px) {
     .d-score { font-size: 68px; }
     .d-clock { font-size: 32px; }
@@ -276,17 +279,48 @@
   /* ── TABLET LANDSCAPE / DESKTOP (840px+) ── */
   @media (min-width: 840px) {
     .display-wrap { max-width: 100%; padding: 16px 40px 40px; }
+
+    /* 3 sloupce: levý panel (hodiny+skóre) | góly | statistiky */
     .d-tablet-layout {
       display: grid;
-      grid-template-columns: 400px 1fr;
+      grid-template-columns: 380px 1fr;
       gap: 24px;
       align-items: start;
     }
-    .d-tablet-left { position: sticky; top: 16px; display: flex; flex-direction: column; gap: 0; }
-    .d-tablet-right { min-width: 0; display: flex; flex-direction: column; gap: 0; }
-    .d-score { font-size: 90px; }
-    .d-clock { font-size: 44px; }
-    .d-feed { max-height: 400px; }
+    .d-tablet-left {
+      position: sticky; top: 16px;
+      display: flex; flex-direction: column; gap: 0;
+    }
+    .d-tablet-right { min-width: 0; }
+
+    /* Pravý panel: 2 sloupce — góly | statistiky */
+    .d-right-cols {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      align-items: start;
+    }
+    .d-right-cols .d-section { margin: 0; }
+    .d-feed { max-height: 520px; }
+    .d-stats { max-height: 520px; overflow-y: auto; }
+
+    /* Větší a výraznější skóre na levé straně */
+    .d-score { font-size: 110px; }
+    .d-clock { font-size: 50px; }
+    .d-team-card { padding: 26px 18px 20px; }
+    .d-team-name { font-size: 21px; }
+    .d-clock-bar { padding: 16px 24px; }
+    .d-period { font-size: 19px; }
+  }
+
+  /* ── WIDE DESKTOP (1200px+) ── */
+  @media (min-width: 1200px) {
+    .d-tablet-layout {
+      grid-template-columns: 420px 1fr;
+      gap: 32px;
+    }
+    .d-score { font-size: 130px; }
+    .d-clock { font-size: 56px; }
   }
 </style>
 </head>
@@ -366,20 +400,25 @@
     </div><!-- /d-tablet-left -->
     <div class="d-tablet-right">
 
-    <!-- Goal feed -->
-    <div class="d-section">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
-        <div class="d-section-title" style="margin-bottom:0;">⚡ Góly</div>
-        <span id="dGoalCount" style="font-size:10px;color:var(--muted);"></span>
-      </div>
-      <div class="d-feed" id="dGoalFeed"><div class="empty-msg">Čekáme na první gól...</div></div>
-    </div>
+    <!-- Na mobilu: pod sebou. Na tabletu/desktopu: dvě karty vedle sebe -->
+    <div class="d-right-cols">
 
-    <!-- Stats -->
-    <div class="d-section">
-      <div class="d-section-title">📊 Statistiky hráčů</div>
-      <div class="d-stats" id="dStats"><div class="empty-msg">Statistiky se zobrazí po prvním gólu.</div></div>
-    </div>
+      <!-- Góly -->
+      <div class="d-section">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+          <div class="d-section-title" style="margin-bottom:0;">⚡ Góly</div>
+          <span id="dGoalCount" style="font-size:11px;color:var(--muted);font-family:'Inter',sans-serif;"></span>
+        </div>
+        <div class="d-feed" id="dGoalFeed"><div class="empty-msg">Čekáme na první gól...</div></div>
+      </div>
+
+      <!-- Statistiky -->
+      <div class="d-section">
+        <div class="d-section-title" style="margin-bottom:12px;">📊 Statistiky hráčů</div>
+        <div class="d-stats" id="dStats"><div class="empty-msg">Statistiky se zobrazí po prvním gólu.</div></div>
+      </div>
+
+    </div><!-- /d-right-cols -->
 
     </div><!-- /d-tablet-right -->
     </div><!-- /d-tablet-layout -->
