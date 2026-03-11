@@ -1,0 +1,1621 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AXONO SYNC</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f5f5f5;
+    --surface: #ffffff;
+    --card: #ffffff;
+    --line: #e0e0e0;
+    --line2: #d0d0d0;
+    --red: #d10020;
+    --red-light: rgba(209,0,32,0.08);
+    --red-glow: rgba(209,0,32,0.22);
+    --dark: #1a1a1a;
+    --text: #1a1a1a;
+    --muted: #999999;
+    --green: #00b248;
+    --warn: #e67e00;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Inter', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background:
+      radial-gradient(ellipse 60% 30% at 50% 0%, rgba(209,0,32,0.05) 0%, transparent 60%);
+    pointer-events: none; z-index: 0;
+  }
+  .app { position: relative; z-index: 1; max-width: 480px; margin: 0 auto; padding: 12px 14px 30px; }
+
+  /* HEADER */
+  header { text-align: center; padding: 20px 0 10px; position: relative; }
+  header::after {
+    content: ''; display: block; margin: 10px auto 0;
+    width: 48px; height: 3px; border-radius: 2px;
+    background: var(--red);
+  }
+  .axono-logo { display: inline-block; margin-bottom: 4px; }
+  .axono-logo svg { height: 36px; width: auto; }
+  .game-subtitle {
+    font-family: 'Inter', sans-serif; font-size: 10px;
+    font-weight: 600; letter-spacing: 3px; text-transform: uppercase; color: var(--muted);
+  }
+
+  /* CLOCK BAR */
+  .clock-bar {
+    display: flex; align-items: center; justify-content: space-between;
+    background: var(--dark);
+    border-radius: 12px; padding: 11px 16px; margin: 14px 0; gap: 8px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.12);
+  }
+  .period-block { display: flex; align-items: center; gap: 7px; flex-shrink: 0; }
+  .period-label {
+    font-family: 'Bebas Neue', sans-serif; font-weight: 400;
+    font-size: 14px; letter-spacing: 2px; color: var(--red); text-transform: uppercase; white-space: nowrap;
+  }
+  .period-nav { display: flex; gap: 3px; }
+  .pnav-btn {
+    background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.15);
+    color: #ffffff; font-family: 'Bebas Neue', sans-serif;
+    font-size: 12px; padding: 3px 8px; border-radius: 5px; cursor: pointer; transition: all 0.15s;
+  }
+  .pnav-btn:hover { background: rgba(255,255,255,0.2); }
+  .clock-display {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 34px; letter-spacing: 3px; color: #ffffff; min-width: 88px; text-align: center;
+    transition: color 0.3s;
+  }
+  .clock-display.running { color: #4cff8f; text-shadow: 0 0 12px rgba(76,255,143,0.4); }
+  .clock-display.warning { color: var(--warn); text-shadow: 0 0 12px rgba(230,126,0,0.4); }
+  .clock-controls { display: flex; gap: 5px; flex-shrink: 0; }
+  .clock-btn {
+    padding: 7px 12px; border-radius: 7px; border: none; cursor: pointer;
+    font-family: 'Bebas Neue', sans-serif; font-size: 13px;
+    letter-spacing: 1px; transition: all 0.15s; white-space: nowrap;
+  }
+  .clock-btn.start { background: var(--red); color: #fff; box-shadow: 0 3px 12px var(--red-glow); }
+  .clock-btn.stop { background: rgba(255,255,255,0.15); color: #fff; border: 1px solid rgba(255,255,255,0.2); }
+  .clock-btn.reset-c { background: transparent; color: rgba(255,255,255,0.4); border: 1px solid rgba(255,255,255,0.15); }
+  .clock-btn:hover { filter: brightness(1.2); }
+
+  /* SCOREBOARD */
+  .scoreboard { display: grid; grid-template-columns: 1fr auto 1fr; gap: 8px; align-items: stretch; margin: 8px 0; }
+  .team-card {
+    background: var(--card);
+    border: 1.5px solid var(--line); border-radius: 16px; padding: 16px 10px 12px;
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+    position: relative; overflow: hidden; transition: border-color 0.3s, box-shadow 0.3s;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+  }
+  .team-card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px;
+    background: var(--line2); transition: background 0.3s;
+  }
+  .team-card.leading { border-color: var(--red); box-shadow: 0 4px 20px var(--red-glow); }
+  .team-card.leading::before { background: var(--red); }
+
+  .team-color-dot { width: 8px; height: 8px; border-radius: 50%; position: absolute; top: 12px; right: 12px; }
+  .team-name-input {
+    background: transparent; border: none; border-bottom: 1.5px dashed var(--line2);
+    color: var(--dark); font-family: 'Bebas Neue', sans-serif;
+    font-size: 17px; letter-spacing: 2px; text-align: center; text-transform: uppercase;
+    width: 100%; outline: none; padding: 2px 4px; transition: border-color 0.2s;
+  }
+  .team-name-input:focus { border-bottom-color: var(--red); }
+  .score-display {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 72px; line-height: 1; color: var(--dark); letter-spacing: -1px;
+    transition: transform 0.15s, color 0.3s;
+  }
+  .team-card.leading .score-display { color: var(--red); }
+  .score-display.bump { transform: scale(1.22); }
+  .score-controls { display: flex; gap: 6px; }
+  .score-btn {
+    width: 36px; height: 36px; border-radius: 50%; border: none; font-size: 20px;
+    font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center;
+    transition: all 0.15s; font-family: 'Inter', sans-serif;
+  }
+  .score-btn.plus { background: var(--red); color: #fff; box-shadow: 0 3px 12px var(--red-glow); }
+  .score-btn.plus:hover { transform: scale(1.12); }
+  .score-btn.minus { background: var(--bg); border: 1.5px solid var(--line2); color: var(--muted); }
+  .score-btn.minus:hover { border-color: var(--red); color: var(--red); }
+
+  .pen-badges { display: flex; gap: 3px; flex-wrap: wrap; justify-content: center; min-height: 16px; }
+  .pen-badge {
+    background: var(--red-light); border: 1px solid rgba(209,0,32,0.25);
+    color: var(--red); font-size: 9px; font-weight: 700;
+    padding: 1px 5px; border-radius: 4px; font-family: 'Inter', sans-serif; white-space: nowrap;
+  }
+  .vs-col { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 6px 0; }
+  .vs-text { font-family: 'Bebas Neue', sans-serif; font-size: 18px; color: var(--muted); letter-spacing: 2px; }
+  .center-line { width: 1px; height: 36px; background: linear-gradient(to bottom, transparent, var(--line2), transparent); }
+
+  /* TABS */
+  .tabs { display: flex; gap: 0; margin: 10px 0 0; border-radius: 10px; overflow: hidden; border: 1.5px solid var(--line); background: var(--surface); }
+  .tab {
+    flex: 1; padding: 9px 3px; background: transparent; border: none;
+    color: var(--muted); font-family: 'Inter', sans-serif; font-weight: 600;
+    font-size: 10px; letter-spacing: 0.3px; text-transform: uppercase; cursor: pointer; transition: all 0.2s;
+    border-bottom: 2px solid transparent;
+  }
+  .tab.active { background: var(--bg); color: var(--red); border-bottom-color: var(--red); }
+
+  .section { background: var(--surface); border: 1.5px solid var(--line); border-radius: 14px; padding: 14px; margin: 8px 0; box-shadow: 0 1px 6px rgba(0,0,0,0.04); }
+  .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .section-title { font-family: 'Bebas Neue', sans-serif; font-size: 14px; letter-spacing: 3px; text-transform: uppercase; color: var(--red); }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  /* FORMS */
+  .form-stack { display: flex; flex-direction: column; gap: 9px; }
+  .form-row { display: flex; gap: 7px; }
+  .team-selector { display: flex; gap: 6px; }
+  .team-opt {
+    flex: 1; padding: 9px 5px; border-radius: 8px; border: 1.5px solid var(--line2);
+    background: transparent; color: var(--muted); font-family: 'Bebas Neue', sans-serif;
+    font-size: 13px; letter-spacing: 1px; cursor: pointer; transition: all 0.15s; text-transform: uppercase;
+  }
+  .team-opt.active { background: var(--red); color: #fff; border-color: var(--red); box-shadow: 0 3px 10px var(--red-glow); }
+  .team-opt.active.red { background: var(--red); border-color: var(--red); }
+  .field {
+    flex: 1; background: var(--bg); border: 1.5px solid var(--line); border-radius: 8px;
+    color: var(--text); font-family: 'Inter', sans-serif; font-size: 13px; padding: 9px 11px;
+    outline: none; transition: border-color 0.2s;
+  }
+  .field:focus { border-color: var(--red); background: #fff; }
+  .field::placeholder { color: var(--muted); }
+  select.field option { background: #fff; color: var(--text); }
+  .submit-btn {
+    background: var(--red); border: none; border-radius: 9px;
+    color: #fff; font-family: 'Bebas Neue', sans-serif;
+    font-size: 15px; letter-spacing: 2px; text-transform: uppercase; padding: 12px;
+    cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 16px var(--red-glow);
+  }
+  .submit-btn:hover { transform: translateY(-1px); filter: brightness(1.08); box-shadow: 0 6px 22px var(--red-glow); }
+  .submit-btn.red-btn { background: #a5001a; }
+
+  /* LISTS */
+  .entry-list { display: flex; flex-direction: column; gap: 5px; max-height: 240px; overflow-y: auto; }
+  .entry-list::-webkit-scrollbar { width: 3px; }
+  .entry-list::-webkit-scrollbar-thumb { background: var(--line2); border-radius: 2px; }
+  .entry-row {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--bg); border: 1.5px solid var(--line);
+    border-left: 3px solid var(--red);
+    border-radius: 9px; padding: 8px 10px; animation: slideIn 0.3s ease;
+  }
+  .entry-row.team-b { flex-direction: row-reverse; border-left: 1.5px solid var(--line); border-right: 3px solid var(--dark); }
+  .entry-row.penalty-row { border-left-color: var(--warn); background: rgba(230,126,0,0.04); border-color: rgba(230,126,0,0.2); }
+  .entry-row.penalty-row.expired { opacity: 0.4; }
+  @keyframes slideIn { from { opacity:0; transform:translateY(-7px); } to { opacity:1; transform:translateY(0); } }
+  .entry-icon { font-size: 14px; flex-shrink: 0; }
+  .entry-info { flex: 1; min-width: 0; }
+  .entry-name { font-family: 'Bebas Neue', sans-serif; font-size: 15px; letter-spacing: 0.5px; color: var(--dark); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .entry-sub { font-size: 10px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .entry-meta { font-size: 10px; color: var(--muted); text-align: right; white-space: nowrap; flex-shrink: 0; }
+  .entry-row.team-b .entry-meta { text-align: left; }
+  .del-btn { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 12px; opacity: 0.5; padding: 2px 3px; transition: all 0.15s; flex-shrink: 0; }
+  .del-btn:hover { opacity: 1; color: var(--red); }
+  .expire-btn {
+    background: none; border: 1px solid rgba(0,178,72,0.4); color: var(--green);
+    cursor: pointer; font-size: 9px; padding: 2px 5px; border-radius: 4px;
+    font-family: 'Inter', sans-serif; font-weight: 700; transition: all 0.15s; flex-shrink: 0;
+  }
+  .expire-btn:hover { background: rgba(0,178,72,0.08); }
+  .pen-timer { font-family: 'Bebas Neue', sans-serif; font-size: 14px; color: var(--warn); min-width: 34px; text-align: right; flex-shrink: 0; }
+
+  /* ROSTER */
+  .roster-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 13px; }
+  .roster-col-title { font-family: 'Bebas Neue', sans-serif; font-size: 12px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
+  .player-list { display: flex; flex-direction: column; gap: 3px; }
+  .player-item { display: flex; align-items: center; gap: 6px; background: var(--bg); border: 1.5px solid var(--line); border-radius: 8px; padding: 6px 9px; font-size: 12px; }
+  .player-num { font-family: 'Bebas Neue', sans-serif; color: var(--red); font-size: 16px; min-width: 24px; }
+  .player-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--dark); font-weight: 500; }
+  .player-name.cap::after { content: ' ©'; color: var(--muted); font-size: 10px; }
+
+  /* STATS */
+  .stats-list { display: flex; flex-direction: column; gap: 5px; }
+  .stat-row { display: flex; align-items: center; justify-content: space-between; padding: 8px 11px; border-radius: 9px; background: var(--bg); border: 1.5px solid var(--line); border-left: 3px solid var(--red); }
+  .stat-left { display: flex; align-items: baseline; gap: 6px; min-width: 0; flex: 1; }
+  .stat-name { font-family: 'Bebas Neue', sans-serif; font-size: 15px; color: var(--dark); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .stat-team { color: var(--muted); font-size: 10px; white-space: nowrap; }
+  .stat-nums { display: flex; gap: 14px; flex-shrink: 0; }
+  .stat-num { text-align: center; }
+  .stat-num .val { font-family: 'Bebas Neue', sans-serif; font-size: 18px; color: var(--red); }
+  .stat-num .lbl { font-size: 8px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; font-weight: 600; }
+
+  /* FOOTER */
+  .footer-controls { display: flex; gap: 7px; margin-top: 10px; }
+  .ctrl-btn {
+    flex: 1; padding: 11px; border-radius: 9px; border: 1.5px solid var(--line);
+    background: var(--surface); color: var(--muted);
+    font-family: 'Bebas Neue', sans-serif; font-size: 12px;
+    letter-spacing: 2px; text-transform: uppercase; cursor: pointer; transition: all 0.2s;
+  }
+  .ctrl-btn:hover { border-color: var(--red); color: var(--red); background: var(--red-light); }
+  .ctrl-btn.danger:hover { border-color: var(--dark); color: var(--dark); background: rgba(0,0,0,0.04); }
+  .empty-msg { text-align: center; color: var(--muted); font-size: 12px; padding: 18px; font-style: italic; }
+
+  /* TOAST */
+  .toast {
+    position: fixed; top: 18px; left: 50%;
+    transform: translateX(-50%) translateY(-80px);
+    background: var(--red); color: #fff;
+    font-family: 'Bebas Neue', sans-serif; font-size: 15px; letter-spacing: 2px;
+    padding: 10px 24px; border-radius: 30px;
+    transition: transform 0.35s cubic-bezier(0.34,1.56,0.64,1);
+    z-index: 999; white-space: nowrap; box-shadow: 0 8px 28px var(--red-glow);
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+  .toast.goal-toast { background: var(--dark); color: #fff; box-shadow: 0 8px 28px rgba(0,0,0,0.25); }
+
+  @media (max-width: 360px) {
+    .score-display { font-size: 58px; }
+    .clock-display { font-size: 26px; }
+    .tab { font-size: 9px; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header>
+    <div class="axono-logo">
+      <svg viewBox="0 0 420 50" xmlns="http://www.w3.org/2000/svg" fill="none">
+        <text
+          x="210" y="40"
+          text-anchor="middle"
+          font-family="'Bebas Neue', sans-serif"
+          font-size="46"
+          letter-spacing="8"
+          fill="#1a1a1a"
+        >AXONO SYNC</text>
+      </svg>
+    </div>
+    <div id="saveIndicator" style="opacity:0;transition:opacity 0.4s;font-size:10px;color:var(--green);font-family:'Inter',sans-serif;font-weight:600;letter-spacing:1px;margin-top:2px;">✓ uloženo</div>
+  </header>
+
+  <!-- SESSION BAR -->
+  <div id="sessionBar" style="background:#1a1a1a;border-radius:12px;padding:12px 16px;margin:12px 0;display:flex;align-items:center;gap:10px;flex-wrap:wrap;box-shadow:0 4px 16px rgba(0,0,0,0.12);">
+    <div id="sessionStatus" style="flex:1;min-width:160px;">
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:11px;letter-spacing:2px;color:#666;margin-bottom:2px;">KÓD ZÁPASU</div>
+      <div id="matchCodeDisplay" style="font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:3px;color:#fff;">— — —</div>
+    </div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;">
+      <button onclick="createNewMatch()" style="background:var(--red);border:none;border-radius:7px;color:#fff;font-family:'Bebas Neue',sans-serif;font-size:13px;letter-spacing:1px;padding:8px 14px;cursor:pointer;">➕ NOVÝ ZÁPAS</button>
+      <button onclick="showJoinDialog()" style="background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:7px;color:#fff;font-family:'Bebas Neue',sans-serif;font-size:13px;letter-spacing:1px;padding:8px 14px;cursor:pointer;">🔗 PŘIPOJIT SE</button>
+    </div>
+    <div id="syncDot" style="width:8px;height:8px;border-radius:50%;background:#444;flex-shrink:0;" title="Stav připojení"></div>
+  </div>
+
+  <!-- JOIN DIALOG -->
+  <div id="joinDialog" style="display:none;background:#fff;border:1.5px solid var(--line);border-radius:14px;padding:16px;margin-bottom:8px;box-shadow:0 4px 20px rgba(0,0,0,0.1);">
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:2px;color:var(--red);margin-bottom:10px;">PŘIPOJIT SE K ZÁPASU</div>
+    <div style="display:flex;gap:8px;">
+      <input id="joinCodeInput" class="field" placeholder="Zadejte kód (např. ABC-234)" maxlength="7" style="text-transform:uppercase;font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;" />
+      <button onclick="joinMatch()" style="background:var(--red);border:none;border-radius:8px;color:#fff;font-family:'Bebas Neue',sans-serif;font-size:13px;letter-spacing:1px;padding:8px 16px;cursor:pointer;white-space:nowrap;">PŘIPOJIT</button>
+      <button onclick="document.getElementById('joinDialog').style.display='none'" style="background:var(--bg);border:1.5px solid var(--line);border-radius:8px;color:var(--muted);font-family:'Bebas Neue',sans-serif;font-size:13px;padding:8px 12px;cursor:pointer;">✕</button>
+    </div>
+  </div>
+
+  <!-- HODINY -->
+  <div class="clock-bar">
+    <div class="period-block">
+      <div class="period-nav">
+        <button class="pnav-btn" onclick="changePeriod(-1)">◀</button>
+        <button class="pnav-btn" onclick="changePeriod(1)">▶</button>
+      </div>
+      <div class="period-label" id="periodDisplay">TŘETINA 1</div>
+    </div>
+    <div class="clock-display" id="clockDisplay">20:00</div>
+    <div class="clock-controls">
+      <button class="clock-btn start" id="clockStartBtn" onclick="toggleClock()">▶ START</button>
+      <button class="clock-btn reset-c" onclick="resetClock()">↺</button>
+    </div>
+  </div>
+
+  <!-- SKÓRE -->
+  <div class="scoreboard">
+    <div class="team-card" id="cardA">
+      <div class="team-color-dot" style="background:#d10020;"></div>
+      <div style="position:relative;width:100%;">
+        <select class="team-name-input" id="teamAName" onchange="onTeamSelect('A')" style="cursor:pointer;appearance:none;-webkit-appearance:none;text-align:center;padding-right:18px;">
+          <option value="DOMÁCÍ">DOMÁCÍ</option>
+        </select>
+        <span style="position:absolute;right:4px;top:50%;transform:translateY(-50%);font-size:9px;color:var(--muted);pointer-events:none;">▼</span>
+      </div>
+      <div class="score-display" id="scoreA">0</div>
+      <div class="score-controls">
+        <button class="score-btn minus" onclick="adjustScore('A',-1)">−</button>
+        <button class="score-btn plus" onclick="adjustScore('A',1)">+</button>
+      </div>
+      <div class="pen-badges" id="penBadgesA"></div>
+    </div>
+    <div class="vs-col">
+      <div class="vs-text">VS</div>
+      <div class="center-line"></div>
+    </div>
+    <div class="team-card" id="cardB">
+      <div class="team-color-dot" style="background:#1a1a1a;"></div>
+      <div style="position:relative;width:100%;">
+        <select class="team-name-input" id="teamBName" onchange="onTeamSelect('B')" style="cursor:pointer;appearance:none;-webkit-appearance:none;text-align:center;padding-right:18px;">
+          <option value="HOSTÉ">HOSTÉ</option>
+        </select>
+        <span style="position:absolute;right:4px;top:50%;transform:translateY(-50%);font-size:9px;color:var(--muted);pointer-events:none;">▼</span>
+      </div>
+      <div class="score-display" id="scoreB">0</div>
+      <div class="score-controls">
+        <button class="score-btn minus" onclick="adjustScore('B',-1)">−</button>
+        <button class="score-btn plus" onclick="adjustScore('B',1)">+</button>
+      </div>
+      <div class="pen-badges" id="penBadgesB"></div>
+    </div>
+  </div>
+
+  <!-- ZÁLOŽKY -->
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('gol')">⚽ Góly</button>
+    <button class="tab" onclick="switchTab('pen')">🚫 Tresty</button>
+    <button class="tab" onclick="switchTab('roster')">👥 Hráči</button>
+    <button class="tab" onclick="switchTab('tymy')">🏒 Týmy</button>
+    <button class="tab" onclick="switchTab('prehled')">📋 Přehled</button>
+    <button class="tab" onclick="switchTab('stats')">📊 Statistiky</button>
+  </div>
+
+  <!-- GÓL TAB -->
+  <div class="section tab-content active" id="tab-gol">
+    <div class="section-title" style="margin-bottom:10px;">Zaznamenat gól</div>
+    <div class="form-stack">
+      <div class="team-selector">
+        <button class="team-opt active" id="goalOptA" onclick="selectGoalTeam('A')">DOMÁCÍ</button>
+        <button class="team-opt" id="goalOptB" onclick="selectGoalTeam('B')">HOSTÉ</button>
+      </div>
+      <div class="form-row" style="align-items:center;gap:8px;">
+        <input class="field" id="scorerNumQuick" placeholder="# střelce" type="number" min="1" max="99" style="max-width:90px;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:16px;" />
+        <span style="color:var(--muted);font-size:12px;flex-shrink:0;">nebo ze soupravy:</span>
+        <select class="field" id="scorerSelect" style="flex:1;"></select>
+      </div>
+      <div class="form-row" style="align-items:center;gap:8px;">
+        <input class="field" id="assistNumQuick" placeholder="# asistence" type="number" min="1" max="99" style="max-width:90px;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:16px;" />
+        <span style="color:var(--muted);font-size:12px;flex-shrink:0;">nebo ze soupravy:</span>
+        <select class="field" id="assistSelect" style="flex:1;"></select>
+      </div>
+      <input class="field" id="golMinuta" placeholder="Minuta (volitelné)" type="number" min="0" max="99" />
+      <button class="submit-btn" onclick="addGoal()">🏒 ZAPSAT GÓL</button>
+    </div>
+  </div>
+
+  <!-- TREST TAB -->
+  <div class="section tab-content" id="tab-pen">
+    <div class="section-title" style="margin-bottom:10px;">Zaznamenat trest</div>
+    <div class="form-stack">
+      <div class="team-selector">
+        <button class="team-opt active" id="penOptA" onclick="selectPenTeam('A')">DOMÁCÍ</button>
+        <button class="team-opt red active" id="penOptB" onclick="selectPenTeam('B')">HOSTÉ</button>
+      </div>
+      <div class="form-row" style="align-items:center;gap:8px;">
+        <input class="field" id="penNumQuick" placeholder="# hráče" type="number" min="1" max="99" style="max-width:90px;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:16px;" />
+        <span style="color:var(--muted);font-size:12px;flex-shrink:0;">nebo ze soupravy:</span>
+        <select class="field" id="penPlayerSelect" style="flex:1;"></select>
+      </div>
+      <div class="form-row">
+        <select class="field" id="penType">
+          <option value="2">2 min – Menší trest</option>
+          <option value="5">5 min – Větší trest</option>
+          <option value="10">10 min – Osobní trest</option>
+          <option value="0">Vyloučení do konce utkání</option>
+        </select>
+        <input class="field" id="penMinuta" placeholder="Min." type="number" min="0" max="99" style="max-width:72px;" />
+      </div>
+      <input class="field" id="penReason" placeholder="Důvod trestu (volitelné)" />
+      <button class="submit-btn red-btn" onclick="addPenalty()">🚫 ZAPSAT TREST</button>
+    </div>
+    <div style="margin-top:13px;">
+      <div class="section-header">
+        <div class="section-title">Aktivní tresty</div>
+      </div>
+      <div class="entry-list" id="penList"><div class="empty-msg">Žádné aktivní tresty.</div></div>
+    </div>
+  </div>
+
+  <!-- HRÁČI TAB -->
+  <div class="section tab-content" id="tab-roster">
+    <div class="section-title" style="margin-bottom:10px;">Správa soupravy</div>
+    <div class="form-stack">
+      <div class="team-selector">
+        <button class="team-opt active" id="rosterOptA" onclick="selectRosterTeam('A')">DOMÁCÍ</button>
+        <button class="team-opt" id="rosterOptB" onclick="selectRosterTeam('B')">HOSTÉ</button>
+      </div>
+
+      <!-- Import bar -->
+      <div id="importBar" style="display:flex;gap:7px;align-items:center;flex-wrap:wrap;">
+        <button onclick="loadDefaultRoster()" id="btnDefaultRoster"
+          style="flex:1;padding:9px 10px;border-radius:8px;border:1.5px dashed var(--red);background:var(--red-light);color:var(--red);font-family:'Bebas Neue',sans-serif;font-size:12px;letter-spacing:1px;cursor:pointer;transition:all 0.15s;"
+          title="Načíst trvalou soupisku klubu z databáze">
+          ⚡ NAČÍST SOUPISKU KLUBU
+        </button>
+        <label style="flex:1;padding:9px 10px;border-radius:8px;border:1.5px dashed var(--line2);background:var(--bg);color:var(--muted);font-family:'Bebas Neue',sans-serif;font-size:12px;letter-spacing:1px;cursor:pointer;text-align:center;transition:all 0.15s;"
+          title="Importovat soupisku ze souboru CSV nebo Excel">
+          📂 IMPORT CSV / EXCEL
+          <input type="file" id="rosterFileInput" accept=".csv,.xlsx,.xls" style="display:none;" onchange="importRosterFile(event)" />
+        </label>
+        <a id="csvTemplateLink" href="#" onclick="downloadCsvTemplate(event)"
+          style="flex:1;padding:9px 10px;border-radius:8px;border:1.5px dashed var(--line2);background:var(--bg);color:var(--muted);font-family:'Bebas Neue',sans-serif;font-size:12px;letter-spacing:1px;cursor:pointer;text-align:center;text-decoration:none;display:block;">
+          📄 VZOR CSV
+        </a>
+      </div>
+      <div id="importStatus" style="display:none;font-size:11px;color:var(--green);font-family:'Inter',sans-serif;font-weight:600;padding:4px 0;"></div>
+
+      <!-- Manual add -->
+      <div style="border-top:1px solid var(--line);padding-top:10px;margin-top:2px;">
+        <div style="font-size:10px;font-family:'Bebas Neue',sans-serif;letter-spacing:2px;color:var(--muted);margin-bottom:7px;">PŘIDAT RUČNĚ</div>
+        <div class="form-row">
+          <input class="field" id="playerNum" placeholder="#" type="number" min="1" max="99" style="max-width:60px;" />
+          <input class="field" id="playerName" placeholder="Jméno hráče" />
+        </div>
+        <label style="display:flex;align-items:center;gap:7px;font-size:12px;color:var(--muted);cursor:pointer;margin-top:6px;">
+          <input type="checkbox" id="playerCap" style="accent-color:var(--red);width:14px;height:14px;" />
+          Označit jako kapitána
+        </label>
+        <button class="submit-btn" style="margin-top:8px;" onclick="addPlayer()">➕ PŘIDAT HRÁČE</button>
+      </div>
+    </div>
+
+    <div class="roster-cols" id="rosterCols">
+      <div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+          <div class="roster-col-title" id="rColTitleA">DOMÁCÍ</div>
+          <button onclick="clearRoster('A')" style="background:none;border:none;color:var(--muted);font-size:10px;cursor:pointer;font-family:'Inter',sans-serif;">vymazat</button>
+        </div>
+        <div class="player-list" id="rosterA"><div class="empty-msg" style="padding:8px;font-size:11px;">Prázdná soupisku.</div></div>
+      </div>
+      <div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+          <div class="roster-col-title" id="rColTitleB">HOSTÉ</div>
+          <button onclick="clearRoster('B')" style="background:none;border:none;color:var(--muted);font-size:10px;cursor:pointer;font-family:'Inter',sans-serif;">vymazat</button>
+        </div>
+        <div class="player-list" id="rosterB"><div class="empty-msg" style="padding:8px;font-size:11px;">Prázdná soupisku.</div></div>
+      </div>
+    </div>
+
+    <!-- SPRÁVA TRVALÉ SOUPRAVY KLUBU -->
+    <div style="margin-top:14px;border-top:1px solid var(--line);padding-top:12px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;cursor:pointer;" onclick="toggleClubMgmt()">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:12px;letter-spacing:2px;color:var(--muted);">⚙ SPRÁVA SOUPRAVY KLUBU</div>
+        <span id="clubMgmtArrow" style="font-size:11px;color:var(--muted);">▼</span>
+      </div>
+      <div id="clubMgmtPanel" style="display:none;">
+        <div style="font-size:11px;color:var(--muted);font-family:'Inter',sans-serif;margin-bottom:10px;">
+          Hráči zde jsou uloženi trvale v databázi a automaticky se načtou do domácího týmu při každém novém zápasu.
+        </div>
+        <div id="clubRosterList" style="display:flex;flex-direction:column;gap:3px;margin-bottom:10px;max-height:200px;overflow-y:auto;">
+          <div class="empty-msg" style="padding:8px;font-size:11px;">Klikněte Obnovit pro načtení seznamu.</div>
+        </div>
+        <button onclick="refreshClubRosterPanel()"
+          style="width:100%;padding:8px;border-radius:7px;border:1.5px solid var(--line2);background:var(--bg);color:var(--muted);font-family:'Bebas Neue',sans-serif;font-size:11px;letter-spacing:1px;cursor:pointer;">
+          🔄 OBNOVIT SEZNAM
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TÝMY TAB -->
+  <div class="section tab-content" id="tab-tymy">
+    <div class="section-header">
+      <div class="section-title">Správa týmů</div>
+      <span style="font-size:10px;color:var(--muted);" id="teamCount"></span>
+    </div>
+    <div style="font-size:11px;color:var(--muted);font-family:'Inter',sans-serif;margin-bottom:12px;">
+      Týmy uložené zde se zobrazí ve výběru na skóre tabuli při každém zápasu.
+    </div>
+    <div class="form-stack" style="margin-bottom:14px;">
+      <div class="form-row">
+        <input class="field" id="newTeamName" placeholder="Název týmu (např. HC Axono)" maxlength="30" />
+        <input class="field" id="newTeamShort" placeholder="Zkratka" maxlength="8" style="max-width:90px;" />
+      </div>
+      <div class="form-row" style="align-items:center;gap:10px;">
+        <label style="font-size:11px;color:var(--muted);font-family:'Inter',sans-serif;flex-shrink:0;">Barva:</label>
+        <input type="color" id="newTeamColor" value="#d10020" style="width:36px;height:36px;border:none;border-radius:6px;cursor:pointer;padding:2px;" />
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);cursor:pointer;margin-left:4px;">
+          <input type="checkbox" id="newTeamIsHome" style="accent-color:var(--red);width:14px;height:14px;" />
+          Náš tým (domácí)
+        </label>
+      </div>
+      <button class="submit-btn" onclick="addTeam()">➕ PŘIDAT TÝM</button>
+    </div>
+    <div id="teamsList" style="display:flex;flex-direction:column;gap:5px;">
+      <div class="empty-msg">Načítám týmy...</div>
+    </div>
+  </div>
+
+  <div class="section tab-content" id="tab-prehled">
+    <div class="section-header">
+      <div class="section-title">Přehled zápasu</div>
+      <span id="eventCount" style="font-size:10px;color:var(--muted);">0 událostí</span>
+    </div>
+    <div class="entry-list" id="eventLog"><div class="empty-msg">Žádné události. Zápas začíná!</div></div>
+  </div>
+
+  <!-- STATISTIKY TAB -->
+  <div class="section tab-content" id="tab-stats">
+    <div class="section-header"><div class="section-title">Statistiky hráčů</div></div>
+    <div class="stats-list" id="statsList"><div class="empty-msg">Góly zobrazí statistiky hráčů.</div></div>
+  </div>
+
+  <div class="footer-controls">
+    <button class="ctrl-btn" onclick="exportGame()">📤 Export</button>
+    <button class="ctrl-btn danger" onclick="resetGame()">↺ Reset</button>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+// ─── SUPABASE CONFIG ─────────────────────────────────────────────────────────
+// 👉 Sem vložte vaše údaje ze Supabase (Project Settings → API)
+const SUPABASE_URL = 'https://wdwmjjbcphntymodnbub.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indkd21qamJjcGhudHltb2RuYnViIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMyMjk0NDQsImV4cCI6MjA4ODgwNTQ0NH0.5Er4or14JJZveXexxO7XCaRIhguZ3FHuLWDJbyzB0oU';
+
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// ─── MATCH SESSION ────────────────────────────────────────────────────────────
+let currentMatchId = null;
+let currentMatchCode = null;
+let realtimeChannel = null;
+
+// Generate a short human-readable match code
+function generateMatchCode() {
+  const alpha = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+  const nums = '23456789';
+  const part1 = Array.from({length:3}, () => alpha[Math.floor(Math.random()*alpha.length)]).join('');
+  const part2 = Array.from({length:3}, () => nums[Math.floor(Math.random()*nums.length)]).join('');
+  return `${part1}-${part2}`;
+}
+
+// ─── STATE ────────────────────────────────────────────────────────────────────
+let state = {
+  teamA: 0, teamB: 0, period: 1,
+  goals: [], penalties: [],
+  goalTeam: 'A', penTeam: 'A', rosterTeam: 'A',
+  goalId: 0, penId: 0, playerId: 0,
+  rosters: { A: [], B: [] },
+  clock: { seconds: 20*60, running: false, interval: null }
+};
+const PERIODS = ['','TŘETINA 1','TŘETINA 2','TŘETINA 3','PRODLOUŽENÍ','NÁJEZDY'];
+
+// ─── CLOCK ────────────────────────────────────────────────────────────────────
+function toggleClock() { state.clock.running ? stopClock() : startClock(); }
+function startClock() {
+  if (state.clock.running) return;
+  state.clock.running = true;
+  document.getElementById('clockStartBtn').textContent = '⏸ PAUZA';
+  document.getElementById('clockStartBtn').className = 'clock-btn stop';
+  state.clock.interval = setInterval(() => {
+    state.clock.seconds = Math.max(0, state.clock.seconds - 1);
+    renderClock();
+    tickPenalties();
+    if (state.clock.seconds === 0) { stopClock(); showToast('⏱ Konec třetiny!'); }
+  }, 1000);
+}
+function stopClock() {
+  state.clock.running = false;
+  clearInterval(state.clock.interval);
+  document.getElementById('clockStartBtn').textContent = '▶ START';
+  document.getElementById('clockStartBtn').className = 'clock-btn start';
+}
+function resetClock() {
+  stopClock();
+  state.clock.seconds = state.period >= 4 ? 5*60 : 20*60;
+  renderClock();
+}
+function renderClock() {
+  const s = state.clock.seconds;
+  const str = `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
+  const el = document.getElementById('clockDisplay');
+  el.textContent = str;
+  el.className = 'clock-display' + (state.clock.running ? (s < 60 ? ' warning' : ' running') : '');
+}
+
+// ─── PERIOD ───────────────────────────────────────────────────────────────────
+function changePeriod(d) {
+  state.period = Math.max(1, Math.min(5, state.period + d));
+  document.getElementById('periodDisplay').textContent = PERIODS[state.period];
+  stopClock();
+  state.clock.seconds = state.period >= 4 ? 5*60 : 20*60;
+  renderClock();
+}
+
+// ─── SCOREBOARD ───────────────────────────────────────────────────────────────
+function adjustScore(team, delta) {
+  if (team === 'A') { state.teamA = Math.max(0, state.teamA + delta); bumpScore('scoreA'); }
+  else { state.teamB = Math.max(0, state.teamB + delta); bumpScore('scoreB'); }
+  updateScoreboard();
+}
+function bumpScore(id) {
+  const el = document.getElementById(id);
+  el.classList.add('bump');
+  setTimeout(() => el.classList.remove('bump'), 200);
+}
+function updateScoreboard() {
+  document.getElementById('scoreA').textContent = state.teamA;
+  document.getElementById('scoreB').textContent = state.teamB;
+  document.getElementById('cardA').classList.toggle('leading', state.teamA > state.teamB);
+  document.getElementById('cardB').classList.toggle('leading', state.teamB > state.teamA);
+  renderPenBadges();
+}
+
+// ─── TEAM NAME SYNC ───────────────────────────────────────────────────────────
+function syncTeamNames() {
+  const a = (document.getElementById('teamAName').value || 'DOMÁCÍ').toUpperCase();
+  const b = (document.getElementById('teamBName').value || 'HOSTÉ').toUpperCase();
+  ['goalOptA','penOptA','rosterOptA'].forEach(id => { const el=document.getElementById(id); if(el) el.textContent=a; });
+  ['goalOptB','penOptB','rosterOptB'].forEach(id => { const el=document.getElementById(id); if(el) el.textContent=b; });
+  document.getElementById('rColTitleA').textContent = a;
+  document.getElementById('rColTitleB').textContent = b;
+}
+document.getElementById('teamAName').addEventListener('change', () => { syncTeamNames(); saveMatchState(); });
+document.getElementById('teamBName').addEventListener('change', () => { syncTeamNames(); saveMatchState(); });
+
+// ─── TABS ─────────────────────────────────────────────────────────────────────
+const TAB_NAMES = ['gol','pen','roster','tymy','prehled','stats'];
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', TAB_NAMES[i]===name));
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  if (name==='stats') renderStats();
+  if (name==='prehled') renderEventLog();
+  if (name==='pen') renderPenList();
+  if (name==='roster') renderRosters();
+  if (name==='tymy') renderTeamsList();
+}
+
+// ─── ROSTER ───────────────────────────────────────────────────────────────────
+function selectRosterTeam(t) {
+  state.rosterTeam = t;
+  document.getElementById('rosterOptA').classList.toggle('active', t==='A');
+  document.getElementById('rosterOptB').classList.toggle('active', t==='B');
+}
+function addPlayer() {
+  const num = document.getElementById('playerNum').value.trim();
+  const name = document.getElementById('playerName').value.trim();
+  const cap = document.getElementById('playerCap').checked;
+  if (!name) { showToast('Zadejte jméno hráče!'); return; }
+  state.rosters[state.rosterTeam].push({ id: ++state.playerId, num: num||'?', name, cap });
+  document.getElementById('playerNum').value = '';
+  document.getElementById('playerName').value = '';
+  document.getElementById('playerCap').checked = false;
+  renderRosters();
+  updatePlayerSelects();
+  showToast(`✅ ${name} přidán`);
+}
+function removePlayer(team, id) {
+  state.rosters[team] = state.rosters[team].filter(p => p.id !== id);
+  renderRosters(); updatePlayerSelects();
+}
+function renderRosters() {
+  ['A','B'].forEach(t => {
+    const el = document.getElementById('roster'+t);
+    if (!state.rosters[t].length) { el.innerHTML='<div class="empty-msg" style="padding:8px;font-size:11px;">Prázdná soupisku.</div>'; return; }
+    el.innerHTML = [...state.rosters[t]].sort((a,b)=>Number(a.num)-Number(b.num)).map(p=>`
+      <div class="player-item">
+        <span class="player-num">#${esc(p.num)}</span>
+        <span class="player-name${p.cap?' cap':''}">${esc(p.name)}</span>
+        <button class="del-btn" onclick="removePlayer('${t}',${p.id})">✕</button>
+      </div>`).join('');
+  });
+}
+function updatePlayerSelects() {
+  fillSelect('scorerSelect', state.goalTeam, '— ze soupravy —');
+  fillSelect('assistSelect', state.goalTeam, '— asistence ze soupravy —');
+  fillSelect('penPlayerSelect', state.penTeam, '— ze soupravy —');
+}
+function fillSelect(id, team, placeholder) {
+  const el = document.getElementById(id); if(!el) return;
+  const sorted = [...(state.rosters[team]||[])].sort((a,b)=>Number(a.num)-Number(b.num));
+  el.innerHTML = `<option value="">${placeholder}</option>` +
+    sorted.map(p=>`<option value="${esc(p.name)}" data-num="${esc(p.num)}">#${esc(p.num)} ${esc(p.name)}</option>`).join('');
+}
+// Resolve player label: if number quick-input filled, find name from roster or use "#N"
+function resolvePlayer(numInputId, selectId, team) {
+  const numVal = document.getElementById(numInputId).value.trim();
+  const selVal = document.getElementById(selectId).value;
+  if (numVal) {
+    const found = (state.rosters[team]||[]).find(p=>String(p.num)===String(numVal));
+    return found ? `#${found.num} ${found.name}` : `#${numVal}`;
+  }
+  return selVal || '';
+}
+
+// ─── GOALS ────────────────────────────────────────────────────────────────────
+function selectGoalTeam(t) {
+  state.goalTeam = t;
+  document.getElementById('goalOptA').classList.toggle('active', t==='A');
+  document.getElementById('goalOptB').classList.toggle('active', t==='B');
+  fillSelect('scorerSelect', t, '— ze soupravy —');
+  fillSelect('assistSelect', t, '— asistence ze soupravy —');
+}
+function addGoal() {
+  const scorer = resolvePlayer('scorerNumQuick', 'scorerSelect', state.goalTeam);
+  const assist = resolvePlayer('assistNumQuick', 'assistSelect', state.goalTeam);
+  const minute = document.getElementById('golMinuta').value.trim() || String(Math.floor((state.period>=4?5:20)*60-state.clock.seconds)/60|0);
+  if (!scorer) { showToast('Zadejte číslo nebo vyberte střelce!'); return; }
+  state.goals.push({ id:++state.goalId, team:state.goalTeam, teamName:getTeamName(state.goalTeam), scorer, assist, minute:minute||'—', period:state.period });
+  adjustScore(state.goalTeam, 1);
+  ['scorerNumQuick','assistNumQuick','golMinuta'].forEach(id => { document.getElementById(id).value=''; });
+  document.getElementById('scorerSelect').value='';
+  document.getElementById('assistSelect').value='';
+  showToast(`⚡ GÓL — ${scorer}!`, true);
+  renderEventLog(); updateEventCount();
+}
+function deleteGoal(id) {
+  const g = state.goals.find(x=>x.id===id); if(!g) return;
+  if (g.team==='A') state.teamA=Math.max(0,state.teamA-1); else state.teamB=Math.max(0,state.teamB-1);
+  state.goals = state.goals.filter(x=>x.id!==id);
+  updateScoreboard(); renderEventLog(); updateEventCount();
+}
+
+// ─── PENALTIES ────────────────────────────────────────────────────────────────
+function selectPenTeam(t) {
+  state.penTeam = t;
+  document.getElementById('penOptA').classList.toggle('active', t==='A');
+  document.getElementById('penOptB').classList.toggle('active', t==='B');
+  fillSelect('penPlayerSelect', t, '— ze soupravy —');
+}
+function addPenalty() {
+  const player = resolvePlayer('penNumQuick', 'penPlayerSelect', state.penTeam);
+  const mins = parseInt(document.getElementById('penType').value);
+  const minute = document.getElementById('penMinuta').value.trim();
+  const reason = document.getElementById('penReason').value.trim();
+  if (!player) { showToast('Zadejte číslo nebo vyberte hráče!'); return; }
+  state.penalties.push({ id:++state.penId, team:state.penTeam, teamName:getTeamName(state.penTeam), player, mins, reason, minute:minute||'—', period:state.period, remaining:mins>0?mins*60:-1, expired:false });
+  ['penNumQuick','penMinuta','penReason'].forEach(id=>{ document.getElementById(id).value=''; });
+  document.getElementById('penPlayerSelect').value='';
+  renderPenList(); renderPenBadges(); renderEventLog(); updateEventCount();
+  showToast(`🚫 Trest: ${player} (${mins>0?mins+' min':'do konce'})`);
+}
+function expirePenalty(id) {
+  const p = state.penalties.find(x=>x.id===id);
+  if (p) { p.expired=true; p.remaining=0; }
+  renderPenList(); renderPenBadges();
+}
+function deletePenalty(id) {
+  state.penalties = state.penalties.filter(x=>x.id!==id);
+  renderPenList(); renderPenBadges(); renderEventLog(); updateEventCount();
+}
+function tickPenalties() {
+  let changed = false;
+  state.penalties.forEach(p => {
+    if (!p.expired && p.remaining > 0) {
+      p.remaining--;
+      if (p.remaining===0) { p.expired=true; showToast(`✅ Trest skončil: ${p.player}`); changed=true; }
+    }
+  });
+  if (changed || state.clock.running) renderPenList();
+  renderPenBadges();
+}
+function renderPenList() {
+  const el = document.getElementById('penList');
+  if (!state.penalties.length) { el.innerHTML='<div class="empty-msg">Žádné aktivní tresty.</div>'; return; }
+  const sorted = [...state.penalties].sort((a,b)=>a.expired-b.expired);
+  el.innerHTML = sorted.map(p=>{
+    const timeStr = p.remaining>0 ? `${Math.floor(p.remaining/60)}:${String(p.remaining%60).padStart(2,'0')}` : (p.mins===0?'∞':'0:00');
+    return `<div class="entry-row penalty-row${p.expired?' expired':''}">
+      <div class="entry-icon">${p.team==='A'?'🔵':'🔴'}</div>
+      <div class="entry-info">
+        <div class="entry-name">${esc(p.player)}</div>
+        <div class="entry-sub">${p.teamName} · T${p.period} · ${p.minute}' · ${p.mins>0?p.mins+' min':'do konce'}${p.reason?' · '+esc(p.reason):''}</div>
+      </div>
+      ${!p.expired&&p.remaining>0?`<div class="pen-timer">${timeStr}</div>`:''}
+      ${!p.expired?`<button class="expire-btn" onclick="expirePenalty(${p.id})">✓ KONEC</button>`:'<span style="font-size:9px;color:var(--muted);">VYPRŠEL</span>'}
+      <button class="del-btn" onclick="deletePenalty(${p.id})">✕</button>
+    </div>`;
+  }).join('');
+}
+function renderPenBadges() {
+  ['A','B'].forEach(t=>{
+    const active = state.penalties.filter(p=>p.team===t&&!p.expired);
+    document.getElementById('penBadges'+t).innerHTML = active.map(p=>{
+      const ts = p.remaining>0?`${Math.floor(p.remaining/60)}:${String(p.remaining%60).padStart(2,'0')}`:(p.mins===0?'∞':'—');
+      return `<span class="pen-badge">🚫 ${ts}</span>`;
+    }).join('');
+  });
+}
+
+// ─── EVENT LOG ────────────────────────────────────────────────────────────────
+function renderEventLog() {
+  const el = document.getElementById('eventLog');
+  const all = [
+    ...state.goals.map(g=>({...g,type:'goal',sortKey:g.period*10000+(parseInt(g.minute)||0)})),
+    ...state.penalties.map(p=>({...p,type:'pen',sortKey:p.period*10000+(parseInt(p.minute)||0)}))
+  ].sort((a,b)=>b.sortKey-a.sortKey);
+  if (!all.length) { el.innerHTML='<div class="empty-msg">Žádné události. Zápas začíná!</div>'; return; }
+  el.innerHTML = all.map(ev => ev.type==='goal' ? `
+    <div class="entry-row ${ev.team==='B'?'team-b':''}">
+      <div class="entry-icon">⚽</div>
+      <div class="entry-info">
+        <div class="entry-name">${esc(ev.scorer)}</div>
+        ${ev.assist?`<div class="entry-sub">Asist: ${esc(ev.assist)}</div>`:''}
+      </div>
+      <div class="entry-meta"><div>${esc(ev.teamName)}</div><div>T${ev.period} · ${ev.minute}'</div></div>
+      <button class="del-btn" onclick="deleteGoal(${ev.id})">✕</button>
+    </div>` : `
+    <div class="entry-row penalty-row ${ev.team==='B'?'team-b':''}">
+      <div class="entry-icon">🚫</div>
+      <div class="entry-info">
+        <div class="entry-name">${esc(ev.player)}</div>
+        <div class="entry-sub">${ev.mins>0?ev.mins+' min':'do konce'}${ev.reason?' · '+esc(ev.reason):''}</div>
+      </div>
+      <div class="entry-meta"><div>${esc(ev.teamName)}</div><div>T${ev.period} · ${ev.minute}'</div></div>
+      <button class="del-btn" onclick="deletePenalty(${ev.id})">✕</button>
+    </div>`).join('');
+}
+function updateEventCount() {
+  const n = state.goals.length + state.penalties.length;
+  document.getElementById('eventCount').textContent = `${n} událost${n===1?'':'í'}`;
+}
+
+// ─── STATS ────────────────────────────────────────────────────────────────────
+function renderStats() {
+  const el = document.getElementById('statsList');
+  const players = {};
+  state.goals.forEach(g=>{
+    if(!players[g.scorer]) players[g.scorer]={name:g.scorer,team:g.teamName,goals:0,assists:0,pens:0};
+    players[g.scorer].goals++;
+    if(g.assist){ if(!players[g.assist]) players[g.assist]={name:g.assist,team:g.teamName,goals:0,assists:0,pens:0}; players[g.assist].assists++; }
+  });
+  state.penalties.forEach(p=>{ if(!players[p.player]) players[p.player]={name:p.player,team:p.teamName,goals:0,assists:0,pens:0}; players[p.player].pens+=(p.mins||0); });
+  const sorted = Object.values(players).sort((a,b)=>(b.goals+b.assists)-(a.goals+a.assists));
+  if(!sorted.length){ el.innerHTML='<div class="empty-msg">Góly zobrazí statistiky hráčů.</div>'; return; }
+  el.innerHTML = sorted.map((p,i)=>`
+    <div class="stat-row">
+      <div class="stat-left"><span class="stat-name">${i===0?'⭐ ':''}${esc(p.name)}</span><span class="stat-team">${esc(p.team)}</span></div>
+      <div class="stat-nums">
+        <div class="stat-num"><div class="val">${p.goals}</div><div class="lbl">G</div></div>
+        <div class="stat-num"><div class="val">${p.assists}</div><div class="lbl">A</div></div>
+        <div class="stat-num"><div class="val">${p.goals+p.assists}</div><div class="lbl">Pts</div></div>
+        <div class="stat-num"><div class="val" style="color:var(--hot)">${p.pens}</div><div class="lbl">TM</div></div>
+      </div>
+    </div>`).join('');
+}
+
+// ─── HELPERS ──────────────────────────────────────────────────────────────────
+function getTeamName(t) { return t==='A'?(document.getElementById('teamAName').value||'DOMÁCÍ'):(document.getElementById('teamBName').value||'HOSTÉ'); }
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function showToast(msg, gold=false) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast' + (gold?' goal-toast':'') + ' show';
+  clearTimeout(t._timer);
+  t._timer = setTimeout(()=>t.classList.remove('show'), 2400);
+}
+
+// ─── EXPORT ───────────────────────────────────────────────────────────────────
+function exportGame() {
+  const a=getTeamName('A'), b=getTeamName('B');
+  let txt=`🏒 ZÁPASOVÝ PROTOKOL\n══════════════════════════════\n${a}  ${state.teamA} – ${state.teamB}  ${b}\n══════════════════════════════\n\nGÓLY:\n`;
+  state.goals.forEach((g,i)=>{ txt+=`${i+1}. [${g.teamName}] ${g.scorer}${g.assist?` (As: ${g.assist})`:''} — T${g.period} ${g.minute}'\n`; });
+  txt+=`\nTREST Y:\n`;
+  state.penalties.forEach((p,i)=>{ txt+=`${i+1}. [${p.teamName}] ${p.player} — ${p.mins>0?p.mins+' min':'do konce'}${p.reason?' ('+p.reason+')':''} T${p.period} ${p.minute}'\n`; });
+  txt+=`\nSOUPISKA DOMÁCÍCH:\n`; state.rosters.A.forEach(p=>{ txt+=`  #${p.num} ${p.name}${p.cap?' (K)':''}\n`; });
+  txt+=`\nSOUPISKA HOSTŮ:\n`; state.rosters.B.forEach(p=>{ txt+=`  #${p.num} ${p.name}${p.cap?' (K)':''}\n`; });
+  txt+=`\nVytvořeno: ${new Date().toLocaleString('cs-CZ')}`;
+  const blob=new Blob([txt],{type:'text/plain;charset=utf-8'});
+  const link=document.createElement('a'); link.href=URL.createObjectURL(blob); link.download=`zapas_${a}_vs_${b}.txt`; link.click();
+  showToast('Protokol exportován!');
+}
+
+// ─── RESET ────────────────────────────────────────────────────────────────────
+function resetGame() {
+  if (!confirm('Opravdu resetovat celý zápas? Tuto akci nelze vrátit.')) return;
+  stopClock();
+  Object.assign(state, { teamA:0, teamB:0, period:1, goals:[], penalties:[], goalTeam:'A', penTeam:'A', rosterTeam:'A', goalId:0, penId:0, playerId:0, rosters:{A:[],B:[]}, clock:{seconds:20*60,running:false,interval:null} });
+  document.getElementById('teamAName').value='DOMÁCÍ'; document.getElementById('teamBName').value='HOSTÉ';
+  document.getElementById('periodDisplay').textContent='TŘETINA 1';
+  syncTeamNames(); updateScoreboard(); renderClock(); renderPenList(); renderRosters(); renderEventLog(); updateEventCount(); updatePlayerSelects();
+  saveState();
+  showToast('Zápas byl resetován ↺');
+}
+
+// ─── SUPABASE SYNC ───────────────────────────────────────────────────────────
+
+function setSyncDot(status) {
+  const dot = document.getElementById('syncDot');
+  if (!dot) return;
+  const colors = { ok: '#00e676', saving: '#ffab00', error: '#e8001c', off: '#444' };
+  dot.style.background = colors[status] || colors.off;
+  dot.title = { ok: 'Připojeno', saving: 'Ukládám...', error: 'Chyba připojení', off: 'Nepřipojeno' }[status] || '';
+}
+
+async function createNewMatch() {
+  if (hasActiveGame() && !confirm('Aktuální zápas bude ukončen. Vytvořit nový?')) return;
+  stopClock();
+  const code = generateMatchCode();
+  setSyncDot('saving');
+  try {
+    const { data, error } = await sb.from('matches').insert({
+      code,
+      team_a_name: 'DOMÁCÍ', team_b_name: 'HOSTÉ',
+      score_a: 0, score_b: 0, period: 1, clock_seconds: 1200
+    }).select().single();
+    if (error) throw error;
+    await loadMatch(data.id, code);
+    // Automaticky načíst soupisku klubu do domácího týmu
+    await loadClubRoster('A', true);
+    showToast(`✅ Zápas vytvořen: ${code}`, false);
+    setSyncDot('ok');
+  } catch(e) {
+    setSyncDot('error');
+    showToast('❌ Chyba: ' + e.message);
+    console.error(e);
+  }
+}
+
+function showJoinDialog() {
+  document.getElementById('joinDialog').style.display = 'block';
+  document.getElementById('joinCodeInput').focus();
+}
+
+async function joinMatch() {
+  const raw = document.getElementById('joinCodeInput').value.trim().toUpperCase();
+  if (!raw) return;
+  // Auto-format: insert dash if missing
+  const code = raw.length === 6 && !raw.includes('-') ? raw.slice(0,3)+'-'+raw.slice(3) : raw;
+  setSyncDot('saving');
+  try {
+    const { data, error } = await sb.from('matches').select('*').eq('code', code).single();
+    if (error || !data) { showToast('❌ Zápas nenalezen: ' + code); setSyncDot('error'); return; }
+    document.getElementById('joinDialog').style.display = 'none';
+    await loadMatch(data.id, code);
+    showToast(`🔗 Připojeno: ${code}`, false);
+    setSyncDot('ok');
+  } catch(e) {
+    setSyncDot('error');
+    showToast('❌ Chyba připojení');
+    console.error(e);
+  }
+}
+
+async function loadMatch(matchId, code) {
+  currentMatchId = matchId;
+  currentMatchCode = code;
+  document.getElementById('matchCodeDisplay').textContent = code;
+  localStorage.setItem('axono_last_match', JSON.stringify({ matchId, code }));
+
+  // Reset local state
+  Object.assign(state, { teamA:0, teamB:0, period:1, goals:[], penalties:[], goalTeam:'A', penTeam:'A', rosterTeam:'A', goalId:0, penId:0, playerId:0, rosters:{A:[],B:[]}, clock:{seconds:1200,running:false,interval:null} });
+  stopClock();
+
+  // Fetch match data
+  const { data: match } = await sb.from('matches').select('*').eq('id', matchId).single();
+  if (match) {
+    state.teamA = match.score_a;
+    state.teamB = match.score_b;
+    state.period = match.period;
+    state.clock.seconds = match.clock_seconds;
+    document.getElementById('teamAName').value = match.team_a_name;
+    document.getElementById('teamBName').value = match.team_b_name;
+    document.getElementById('periodDisplay').textContent = PERIODS[state.period] || 'TŘETINA 1';
+  }
+
+  // Fetch goals
+  const { data: goals } = await sb.from('goals').select('*').eq('match_id', matchId).order('created_at');
+  if (goals) {
+    state.goals = goals.map(g => ({ id: g.id, team: g.team, teamName: g.team_name, scorer: g.scorer, assist: g.assist||'', minute: g.minute||'—', period: g.period }));
+    state.goalId = state.goals.length;
+  }
+
+  // Fetch penalties
+  const { data: pens } = await sb.from('penalties').select('*').eq('match_id', matchId).order('created_at');
+  if (pens) {
+    state.penalties = pens.map(p => ({ id: p.id, team: p.team, teamName: p.team_name, player: p.player, mins: p.mins, reason: p.reason||'', minute: p.minute||'—', period: p.period, remaining: p.remaining ?? p.mins*60, expired: p.expired }));
+    state.penId = state.penalties.length;
+  }
+
+  // Fetch players
+  const { data: players } = await sb.from('players').select('*').eq('match_id', matchId).order('num');
+  if (players) {
+    state.rosters = { A: [], B: [] };
+    players.forEach(p => {
+      const t = p.team;
+      if (state.rosters[t]) state.rosters[t].push({ id: p.id, num: p.num, name: p.name, cap: p.is_captain });
+    });
+    state.playerId = players.length;
+  }
+
+  syncTeamNames(); updateScoreboard(); renderClock(); renderPenList();
+  renderRosters(); renderEventLog(); updateEventCount(); updatePlayerSelects();
+
+  // Subscribe to real-time updates
+  subscribeRealtime(matchId);
+}
+
+function subscribeRealtime(matchId) {
+  if (realtimeChannel) sb.removeChannel(realtimeChannel);
+  realtimeChannel = sb.channel(`match-${matchId}`)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'matches', filter: `id=eq.${matchId}` }, async () => {
+      const { data } = await sb.from('matches').select('*').eq('id', matchId).single();
+      if (!data) return;
+      state.teamA = data.score_a; state.teamB = data.score_b;
+      state.period = data.period; state.clock.seconds = data.clock_seconds;
+      document.getElementById('teamAName').value = data.team_a_name;
+      document.getElementById('teamBName').value = data.team_b_name;
+      document.getElementById('periodDisplay').textContent = PERIODS[state.period];
+      updateScoreboard(); renderClock(); syncTeamNames();
+    })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'goals', filter: `match_id=eq.${matchId}` }, async () => {
+      const { data } = await sb.from('goals').select('*').eq('match_id', matchId).order('created_at');
+      if (!data) return;
+      state.goals = data.map(g => ({ id: g.id, team: g.team, teamName: g.team_name, scorer: g.scorer, assist: g.assist||'', minute: g.minute||'—', period: g.period }));
+      renderEventLog(); updateEventCount();
+    })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'penalties', filter: `match_id=eq.${matchId}` }, async () => {
+      const { data } = await sb.from('penalties').select('*').eq('match_id', matchId).order('created_at');
+      if (!data) return;
+      state.penalties = data.map(p => ({ id: p.id, team: p.team, teamName: p.team_name, player: p.player, mins: p.mins, reason: p.reason||'', minute: p.minute||'—', period: p.period, remaining: p.remaining ?? p.mins*60, expired: p.expired }));
+      renderPenList(); renderPenBadges(); renderEventLog();
+    })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'players', filter: `match_id=eq.${matchId}` }, async () => {
+      const { data } = await sb.from('players').select('*').eq('match_id', matchId).order('num');
+      if (!data) return;
+      state.rosters = { A: [], B: [] };
+      data.forEach(p => { if (state.rosters[p.team]) state.rosters[p.team].push({ id: p.id, num: p.num, name: p.name, cap: p.is_captain }); });
+      renderRosters(); updatePlayerSelects();
+    })
+    .subscribe(status => setSyncDot(status === 'SUBSCRIBED' ? 'ok' : 'error'));
+}
+
+// ─── DB WRITES (replace localStorage saveState) ───────────────────────────────
+async function saveMatchState() {
+  if (!currentMatchId) return;
+  setSyncDot('saving');
+  try {
+    await sb.from('matches').update({
+      score_a: state.teamA, score_b: state.teamB,
+      period: state.period, clock_seconds: state.clock.seconds,
+      team_a_name: document.getElementById('teamAName').value || 'DOMÁCÍ',
+      team_b_name: document.getElementById('teamBName').value || 'HOSTÉ',
+      updated_at: new Date().toISOString()
+    }).eq('id', currentMatchId);
+    setSyncDot('ok');
+    showSaveIndicator();
+  } catch(e) { setSyncDot('error'); }
+}
+
+// Override saveState to use Supabase instead of localStorage
+function saveState() { saveMatchState(); }
+
+// ─── OVERRIDE ADD/DELETE TO USE SUPABASE ─────────────────────────────────────
+
+// ── GOALS ──
+const _origAddGoal = addGoal;
+function addGoal() {
+  const scorer = resolvePlayer('scorerNumQuick', 'scorerSelect', state.goalTeam);
+  const assist = resolvePlayer('assistNumQuick', 'assistSelect', state.goalTeam);
+  const minute = document.getElementById('golMinuta').value.trim() || String(Math.floor(((state.period>=4?5:20)*60-state.clock.seconds)/60));
+  if (!scorer) { showToast('Zadejte číslo nebo vyberte střelce!'); return; }
+  const teamName = getTeamName(state.goalTeam);
+  const goalObj = { id: ++state.goalId, team: state.goalTeam, teamName, scorer, assist, minute: minute||'—', period: state.period };
+  state.goals.push(goalObj);
+  adjustScore(state.goalTeam, 1);
+  ['scorerNumQuick','assistNumQuick','golMinuta'].forEach(id => { document.getElementById(id).value=''; });
+  document.getElementById('scorerSelect').value='';
+  document.getElementById('assistSelect').value='';
+  showToast(`⚡ GÓL — ${scorer}!`, true);
+  renderEventLog(); updateEventCount();
+  if (currentMatchId) {
+    sb.from('goals').insert({ match_id: currentMatchId, team: state.goalTeam, team_name: teamName, scorer, assist, minute: minute||'—', period: state.period }).then(() => saveMatchState());
+  }
+}
+
+const _origDeleteGoal = deleteGoal;
+function deleteGoal(id) {
+  const g = state.goals.find(x=>x.id===id); if(!g) return;
+  if (g.team==='A') state.teamA=Math.max(0,state.teamA-1); else state.teamB=Math.max(0,state.teamB-1);
+  state.goals = state.goals.filter(x=>x.id!==id);
+  updateScoreboard(); renderEventLog(); updateEventCount();
+  if (currentMatchId) {
+    sb.from('goals').delete().eq('id', id).then(() => saveMatchState());
+  }
+}
+
+// ── PENALTIES ──
+const _origAddPenalty = addPenalty;
+function addPenalty() {
+  const player = resolvePlayer('penNumQuick', 'penPlayerSelect', state.penTeam);
+  const mins = parseInt(document.getElementById('penType').value);
+  const minute = document.getElementById('penMinuta').value.trim();
+  const reason = document.getElementById('penReason').value.trim();
+  if (!player) { showToast('Zadejte číslo nebo vyberte hráče!'); return; }
+  const teamName = getTeamName(state.penTeam);
+  const remaining = mins > 0 ? mins * 60 : -1;
+  const penObj = { id: ++state.penId, team: state.penTeam, teamName, player, mins, reason, minute: minute||'—', period: state.period, remaining, expired: false };
+  state.penalties.push(penObj);
+  ['penNumQuick','penMinuta','penReason'].forEach(id=>{ document.getElementById(id).value=''; });
+  document.getElementById('penPlayerSelect').value='';
+  renderPenList(); renderPenBadges(); renderEventLog(); updateEventCount();
+  showToast(`🚫 Trest: ${player} (${mins>0?mins+' min':'do konce'})`);
+  if (currentMatchId) {
+    sb.from('penalties').insert({ match_id: currentMatchId, team: state.penTeam, team_name: teamName, player, mins, reason, minute: minute||'—', period: state.period, remaining, expired: false });
+  }
+}
+
+const _origDeletePenalty = deletePenalty;
+function deletePenalty(id) {
+  state.penalties = state.penalties.filter(x=>x.id!==id);
+  renderPenList(); renderPenBadges(); renderEventLog(); updateEventCount();
+  if (currentMatchId) sb.from('penalties').delete().eq('id', id);
+}
+
+const _origExpirePenalty = expirePenalty;
+function expirePenalty(id) {
+  const p = state.penalties.find(x=>x.id===id);
+  if (p) { p.expired=true; p.remaining=0; }
+  renderPenList(); renderPenBadges();
+  if (currentMatchId) sb.from('penalties').update({ expired: true, remaining: 0 }).eq('id', id);
+}
+
+// ── PLAYERS ──
+const _origAddPlayer = addPlayer;
+function addPlayer() {
+  const num = document.getElementById('playerNum').value.trim();
+  const name = document.getElementById('playerName').value.trim();
+  const cap = document.getElementById('playerCap').checked;
+  if (!name) { showToast('Zadejte jméno hráče!'); return; }
+  state.rosters[state.rosterTeam].push({ id: ++state.playerId, num: num||'?', name, cap });
+  document.getElementById('playerNum').value = '';
+  document.getElementById('playerName').value = '';
+  document.getElementById('playerCap').checked = false;
+  renderRosters(); updatePlayerSelects();
+  showToast(`✅ ${name} přidán`);
+  // Domácí tým = automaticky uložit i do soupravy klubu
+  if (state.rosterTeam === 'A' && currentMatchId) {
+    if (confirm(`Přidat ${name} také do trvalé soupravy klubu?`)) {
+      addPlayerToClub(num||'?', name, cap);
+    }
+  }
+  if (currentMatchId) {
+    sb.from('players').insert({ match_id: currentMatchId, team: state.rosterTeam, num: num||'?', name, is_captain: cap });
+  }
+}
+
+const _origRemovePlayer = removePlayer;
+function removePlayer(team, id) {
+  state.rosters[team] = state.rosters[team].filter(p => p.id !== id);
+  renderRosters(); updatePlayerSelects();
+  if (currentMatchId) sb.from('players').delete().eq('id', id);
+}
+
+// ── PERIOD + SCORE ──
+const _origChangePeriod = changePeriod;
+function changePeriod(d) { _origChangePeriod(d); saveMatchState(); }
+
+const _origAdjustScore = adjustScore;
+function adjustScore(team, delta) { _origAdjustScore(team, delta); saveMatchState(); }
+
+// ─── AUTOSAVE (fallback localStorage for clock ticks) ────────────────────────
+const SAVE_KEY = 'axono_hockeyball_v1';
+function saveLocalFallback() {
+  try { localStorage.setItem(SAVE_KEY, JSON.stringify({ clockSeconds: state.clock.seconds, savedAt: Date.now() })); } catch(e) {}
+}
+
+function showSaveIndicator() {
+  let el = document.getElementById('saveIndicator');
+  if (!el) return;
+  el.style.opacity = '1';
+  clearTimeout(el._t);
+  el._t = setTimeout(() => { el.style.opacity = '0'; }, 1800);
+}
+
+// ─── BEFOREUNLOAD WARNING ────────────────────────────────────────────────────
+function hasActiveGame() {
+  return state.goals.length > 0 || state.penalties.length > 0 ||
+         state.teamA > 0 || state.teamB > 0 ||
+         state.rosters.A.length > 0 || state.rosters.B.length > 0;
+}
+window.addEventListener('beforeunload', (e) => {
+  if (currentMatchId && hasActiveGame()) {
+    e.preventDefault(); e.returnValue = 'Máte rozpracovaný zápas. Opravdu chcete odejít?';
+  }
+});
+
+function toggleClubMgmt() {
+  const panel = document.getElementById('clubMgmtPanel');
+  const arrow = document.getElementById('clubMgmtArrow');
+  const open = panel.style.display === 'none';
+  panel.style.display = open ? 'block' : 'none';
+  arrow.textContent = open ? '▲' : '▼';
+  if (open) refreshClubRosterPanel();
+}
+
+async function refreshClubRosterPanel() {
+  const el = document.getElementById('clubRosterList');
+  el.innerHTML = '<div class="empty-msg" style="padding:8px;font-size:11px;">Načítám...</div>';
+  try {
+    const { data, error } = await sb.from('club_roster').select('*').order('num');
+    if (error) throw error;
+    if (!data || data.length === 0) {
+      el.innerHTML = '<div class="empty-msg" style="padding:8px;font-size:11px;">Žádní hráči v soupravě klubu.</div>';
+      return;
+    }
+    el.innerHTML = data.map(p => `
+      <div class="player-item" style="opacity:${p.active ? 1 : 0.4};">
+        <span class="player-num">#${esc(p.num)}</span>
+        <span class="player-name${p.is_captain?' cap':''}">${esc(p.name)}</span>
+        <span style="font-size:9px;color:var(--muted);margin-left:auto;margin-right:6px;">${p.active ? 'aktivní' : 'neaktivní'}</span>
+        ${p.active
+          ? `<button class="del-btn" onclick="deactivateClubPlayer('${p.id}','${esc(p.name)}')" title="Odebrat ze soupravy">✕</button>`
+          : `<button style="background:none;border:1px solid var(--line2);border-radius:4px;color:var(--muted);font-size:9px;padding:2px 5px;cursor:pointer;font-family:'Inter',sans-serif;" onclick="reactivateClubPlayer('${p.id}','${esc(p.name)}')">obnovit</button>`
+        }
+      </div>`).join('');
+  } catch(e) {
+    el.innerHTML = `<div class="empty-msg" style="padding:8px;font-size:11px;color:var(--red);">Chyba: ${e.message}</div>`;
+  }
+}
+
+async function reactivateClubPlayer(id, name) {
+  await sb.from('club_roster').update({ active: true }).eq('id', id);
+  showToast(`✅ ${name} obnoven`);
+  refreshClubRosterPanel();
+}
+
+// ─── KLUB SOUPISKA (Supabase club_roster) ────────────────────────────────────
+// Soupiska je uložena v tabulce club_roster — nezávisle na zápasech.
+// Při novém zápasu se automaticky načte do domácího týmu.
+
+async function loadClubRoster(team = 'A', silent = false) {
+  setSyncDot('saving');
+  try {
+    const { data, error } = await sb.from('club_roster')
+      .select('*').eq('active', true).order('num');
+    if (error) throw error;
+    if (!data || data.length === 0) {
+      if (!silent) showToast('📋 Soupiska klubu je prázdná — přidejte hráče v záložce Hráči');
+      setSyncDot('ok');
+      return;
+    }
+    state.rosters[team] = data.map(p => ({
+      id: p.id, num: p.num, name: p.name, cap: p.is_captain
+    }));
+    state.playerId = Math.max(state.playerId, data.length);
+    renderRosters(); updatePlayerSelects();
+    if (!silent) {
+      showImportStatus(`✅ Načteno ${data.length} hráčů ze soupravy klubu`);
+      showToast(`⚡ Soupiska klubu načtena (${data.length} hráčů)`);
+    }
+    setSyncDot('ok');
+    if (currentMatchId) syncRosterToDb(team);
+  } catch(e) {
+    setSyncDot('error');
+    if (!silent) showToast('❌ Chyba načítání soupravy: ' + e.message);
+    console.error(e);
+  }
+}
+
+// Přidat hráče do trvalé soupravy klubu
+async function addPlayerToClub(num, name, cap) {
+  try {
+    const { error } = await sb.from('club_roster')
+      .insert({ num, name, is_captain: cap, active: true });
+    if (error) throw error;
+    showToast(`✅ ${name} přidán do soupravy klubu`);
+    return true;
+  } catch(e) {
+    showToast('❌ Chyba: ' + e.message);
+    return false;
+  }
+}
+
+// Deaktivovat hráče v soupravě klubu (měkké smazání)
+async function deactivateClubPlayer(id, name) {
+  if (!confirm(`Odebrat ${name} ze soupravy klubu?`)) return;
+  try {
+    await sb.from('club_roster').update({ active: false }).eq('id', id);
+    showToast(`🗑 ${name} odebrán ze soupravy`);
+    await loadClubRoster(state.rosterTeam, true);
+  } catch(e) { showToast('❌ Chyba: ' + e.message); }
+}
+
+// Tlačítko "NAČÍST SOUPISKU AXONO" nyní načítá z DB
+async function loadDefaultRoster() {
+  const team = state.rosterTeam;
+  if (state.rosters[team].length > 0 && !confirm(`Přepsat stávající soupisku (${state.rosters[team].length} hráčů)?`)) return;
+  await loadClubRoster(team);
+}
+
+
+function clearRoster(team) {
+  if (!state.rosters[team].length) return;
+  if (!confirm(`Vymazat celou soupisku (${state.rosters[team].length} hráčů)?`)) return;
+  const ids = state.rosters[team].map(p => p.id);
+  state.rosters[team] = [];
+  renderRosters(); updatePlayerSelects();
+  if (currentMatchId) ids.forEach(id => sb.from('players').delete().eq('id', id));
+}
+
+async function syncRosterToDb(team) {
+  if (!currentMatchId) return;
+  // Delete existing players for this team then re-insert
+  await sb.from('players').delete().eq('match_id', currentMatchId).eq('team', team);
+  const rows = state.rosters[team].map(p => ({ match_id: currentMatchId, team, num: p.num, name: p.name, is_captain: p.cap }));
+  if (rows.length) await sb.from('players').insert(rows);
+}
+
+// ─── CSV / EXCEL IMPORT ───────────────────────────────────────────────────────
+function importRosterFile(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  event.target.value = ''; // reset so same file can be re-selected
+  const ext = file.name.split('.').pop().toLowerCase();
+  if (ext === 'csv') {
+    const reader = new FileReader();
+    reader.onload = e => parseAndLoadCsv(e.target.result);
+    reader.readAsText(file, 'UTF-8');
+  } else if (ext === 'xlsx' || ext === 'xls') {
+    // Use SheetJS if available, otherwise guide the user
+    if (typeof XLSX !== 'undefined') {
+      const reader = new FileReader();
+      reader.onload = e => {
+        const wb = XLSX.read(e.target.result, { type: 'array' });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const csv = XLSX.utils.sheet_to_csv(ws);
+        parseAndLoadCsv(csv);
+      };
+      reader.readAsArrayBuffer(file);
+    } else {
+      showToast('❌ Pro Excel uložte jako CSV a importujte znovu');
+      showImportStatus('❌ Excel není podporován — uložte soubor jako CSV (.csv) v Excelu přes Soubor → Uložit jako');
+    }
+  }
+}
+
+function parseAndLoadCsv(text) {
+  const lines = text.trim().split(/\r?\n/);
+  if (lines.length < 2) { showToast('❌ Prázdný soubor'); return; }
+
+  // Detect separator (, or ;)
+  const sep = lines[0].includes(';') ? ';' : ',';
+
+  // Parse header row — find columns by name (case-insensitive)
+  const header = lines[0].split(sep).map(h => h.trim().toLowerCase().replace(/["']/g,''));
+  const iNum  = header.findIndex(h => ['cislo','číslo','num','number','#','dresovka'].includes(h));
+  const iName = header.findIndex(h => ['jmeno','jméno','name','hrac','hráč','prijmeni','příjmení'].includes(h));
+  const iCap  = header.findIndex(h => ['kapitan','kapitán','captain','cap','k'].includes(h));
+
+  if (iName === -1) {
+    showImportStatus('❌ Soubor neobsahuje sloupec se jménem. Zkontrolujte záhlaví — očekává se: Číslo, Jméno, Kapitán');
+    showToast('❌ Chybí sloupec Jméno');
+    return;
+  }
+
+  const players = [];
+  for (let i = 1; i < lines.length; i++) {
+    const cols = lines[i].split(sep).map(c => c.trim().replace(/^["']|["']$/g,''));
+    const name = cols[iName];
+    if (!name) continue;
+    const num  = iNum  >= 0 ? cols[iNum]  || '?' : '?';
+    const cap  = iCap  >= 0 ? ['1','true','ano','yes','k','✓'].includes((cols[iCap]||'').toLowerCase()) : false;
+    players.push({ id: ++state.playerId, num, name, cap });
+  }
+
+  if (players.length === 0) { showToast('❌ Žádní hráči v souboru'); return; }
+
+  const team = state.rosterTeam;
+  if (state.rosters[team].length > 0 && !confirm(`Přepsat stávající soupisku (${state.rosters[team].length} hráčů) s ${players.length} hráči ze souboru?`)) return;
+  state.rosters[team] = players;
+  renderRosters(); updatePlayerSelects();
+  showImportStatus(`✅ Importováno ${players.length} hráčů`);
+  showToast(`📂 Import: ${players.length} hráčů načteno`);
+  if (currentMatchId) syncRosterToDb(team);
+  // Nabídnout uložení do trvalé soupravy klubu
+  if (team === 'A' && confirm(`Uložit ${players.length} hráčů také do trvalé soupravy klubu?\n(Přepíše stávající soupisku klubu)`)) {
+    saveImportToClubRoster(players);
+  }
+}
+
+function showImportStatus(msg) {
+  const el = document.getElementById('importStatus');
+  if (!el) return;
+  el.textContent = msg;
+  el.style.display = 'block';
+  el.style.color = msg.startsWith('❌') ? 'var(--red)' : 'var(--green)';
+  clearTimeout(el._t);
+  el._t = setTimeout(() => { el.style.display = 'none'; }, 5000);
+}
+
+async function saveImportToClubRoster(players) {
+  try {
+    // Deactivate all current
+    await sb.from('club_roster').update({ active: false }).neq('id', '00000000-0000-0000-0000-000000000000');
+    // Insert new
+    const rows = players.map(p => ({ num: p.num, name: p.name, is_captain: p.cap, active: true }));
+    const { error } = await sb.from('club_roster').insert(rows);
+    if (error) throw error;
+    showToast(`✅ ${players.length} hráčů uloženo do soupravy klubu`);
+  } catch(e) {
+    showToast('❌ Chyba uložení do klubu: ' + e.message);
+  }
+}
+
+function downloadCsvTemplate(e) {
+  e.preventDefault();
+  const rows = [
+    'Číslo,Jméno,Kapitán',
+    '1,Příjmení Jméno,',
+    '7,Příjmení Jméno,ano',
+    '10,Příjmení Jméno,',
+    '13,Příjmení Jméno,',
+    '21,Příjmení Jméno,',
+  ].join('\n');
+  const blob = new Blob(['\uFEFF' + rows], { type: 'text/csv;charset=utf-8' }); // BOM for Excel
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'axono-soupiska-vzor.csv';
+  a.click();
+  showToast('📄 Vzorový soubor stažen');
+}
+
+// ─── TÝMY (Supabase teams table) ─────────────────────────────────────────────
+
+let teamsCache = [];
+
+async function loadTeams() {
+  try {
+    const { data, error } = await sb.from('teams').select('*').eq('active', true).order('name');
+    if (error) throw error;
+    teamsCache = data || [];
+    populateTeamSelects();
+    return teamsCache;
+  } catch(e) {
+    console.warn('Načítání týmů selhalo:', e);
+    return [];
+  }
+}
+
+function populateTeamSelects() {
+  ['teamAName','teamBName'].forEach(id => {
+    const sel = document.getElementById(id);
+    if (!sel) return;
+    const current = sel.value;
+    const isA = id === 'teamAName';
+    sel.innerHTML = `<option value="${isA ? 'DOMÁCÍ' : 'HOSTÉ'}">${isA ? '— Vyberte domácí tým —' : '— Vyberte hosty —'}</option>`;
+    // Our team first (is_home = true)
+    const home = teamsCache.filter(t => t.is_home);
+    const others = teamsCache.filter(t => !t.is_home);
+    if (home.length) {
+      const og = document.createElement('optgroup');
+      og.label = 'Náš tým';
+      home.forEach(t => {
+        const o = document.createElement('option');
+        o.value = t.short || t.name;
+        o.textContent = t.name;
+        o.dataset.color = t.color || '#d10020';
+        o.dataset.id = t.id;
+        og.appendChild(o);
+      });
+      sel.appendChild(og);
+    }
+    if (others.length) {
+      const og = document.createElement('optgroup');
+      og.label = 'Soupeři';
+      others.forEach(t => {
+        const o = document.createElement('option');
+        o.value = t.short || t.name;
+        o.textContent = t.name;
+        o.dataset.color = t.color || '#1a1a1a';
+        o.dataset.id = t.id;
+        og.appendChild(o);
+      });
+      sel.appendChild(og);
+    }
+    // Restore selection
+    if (current) sel.value = current;
+  });
+}
+
+function onTeamSelect(team) {
+  const sel = document.getElementById(team === 'A' ? 'teamAName' : 'teamBName');
+  const opt = sel.options[sel.selectedIndex];
+  const color = opt?.dataset?.color;
+  const dot = document.querySelector(`#card${team} .team-color-dot`);
+  if (color && dot) dot.style.background = color;
+  syncTeamNames();
+  saveMatchState();
+}
+
+async function renderTeamsList() {
+  const el = document.getElementById('teamsList');
+  const countEl = document.getElementById('teamCount');
+  el.innerHTML = '<div class="empty-msg">Načítám...</div>';
+  try {
+    const { data } = await sb.from('teams').select('*').order('name');
+    const all = data || [];
+    const active = all.filter(t => t.active);
+    if (countEl) countEl.textContent = `${active.length} týmů`;
+    if (!all.length) { el.innerHTML = '<div class="empty-msg">Žádné týmy. Přidejte první tým.</div>'; return; }
+    el.innerHTML = all.map(t => `
+      <div class="entry-row${t.active ? '' : ''}" style="opacity:${t.active ? 1 : 0.45};">
+        <div style="width:14px;height:14px;border-radius:50%;background:${t.color || '#ccc'};flex-shrink:0;border:1px solid rgba(0,0,0,0.1);"></div>
+        <div class="entry-info">
+          <div class="entry-name">${esc(t.name)}${t.is_home ? ' <span style="font-size:9px;background:var(--red);color:#fff;padding:1px 5px;border-radius:3px;font-family:Inter,sans-serif;vertical-align:middle;">NÁŠ TÝM</span>' : ''}</div>
+          <div class="entry-sub">${t.short ? 'Zkratka: ' + esc(t.short) : ''}</div>
+        </div>
+        <div style="display:flex;gap:5px;flex-shrink:0;">
+          ${t.active
+            ? `<button class="del-btn" onclick="deleteTeam('${t.id}','${esc(t.name)}')" title="Smazat tým">✕</button>`
+            : `<button style="background:none;border:1px solid var(--line2);border-radius:4px;color:var(--muted);font-size:9px;padding:2px 6px;cursor:pointer;font-family:'Inter',sans-serif;" onclick="restoreTeam('${t.id}')">obnovit</button>`
+          }
+        </div>
+      </div>`).join('');
+  } catch(e) {
+    el.innerHTML = `<div class="empty-msg" style="color:var(--red);">Chyba: ${e.message}</div>`;
+  }
+}
+
+async function addTeam() {
+  const name = document.getElementById('newTeamName').value.trim();
+  const short = document.getElementById('newTeamShort').value.trim().toUpperCase();
+  const color = document.getElementById('newTeamColor').value;
+  const isHome = document.getElementById('newTeamIsHome').checked;
+  if (!name) { showToast('Zadejte název týmu!'); return; }
+  try {
+    const { error } = await sb.from('teams').insert({ name, short: short || null, color, is_home: isHome, active: true });
+    if (error) throw error;
+    document.getElementById('newTeamName').value = '';
+    document.getElementById('newTeamShort').value = '';
+    document.getElementById('newTeamIsHome').checked = false;
+    showToast(`✅ Tým ${name} přidán`);
+    await loadTeams();
+    renderTeamsList();
+  } catch(e) { showToast('❌ Chyba: ' + e.message); }
+}
+
+async function deleteTeam(id, name) {
+  if (!confirm(`Smazat tým "${name}"?`)) return;
+  await sb.from('teams').update({ active: false }).eq('id', id);
+  showToast(`🗑 ${name} smazán`);
+  await loadTeams();
+  renderTeamsList();
+}
+
+async function restoreTeam(id) {
+  await sb.from('teams').update({ active: true }).eq('id', id);
+  showToast('✅ Tým obnoven');
+  await loadTeams();
+  renderTeamsList();
+}
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+document.getElementById('penOptA').classList.add('active');
+document.getElementById('penOptB').classList.remove('active');
+renderClock(); updateScoreboard(); setSyncDot('off');
+
+// Load teams into selectors
+loadTeams();
+
+// Try to restore last match session
+(async () => {
+  try {
+    const saved = localStorage.getItem('axono_last_match');
+    if (saved) {
+      const { matchId, code } = JSON.parse(saved);
+      if (matchId && code) {
+        await loadMatch(matchId, code);
+        showToast(`✅ Obnoven zápas: ${code}`);
+      }
+    }
+  } catch(e) { console.warn('Auto-restore failed:', e); }
+})();
+</script>
+</body>
+</html>
