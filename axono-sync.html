@@ -46,7 +46,7 @@
     background: var(--red);
   }
   .axono-logo { display: inline-block; margin-bottom: 4px; }
-  .axono-logo svg { height: 36px; width: auto; }
+  .axono-logo img { height: 44px; width: auto; display: block; }
   .game-subtitle {
     font-family: 'Inter', sans-serif; font-size: 10px;
     font-weight: 600; letter-spacing: 3px; text-transform: uppercase; color: var(--muted);
@@ -265,6 +265,41 @@
     .clock-display { font-size: 26px; }
     .tab { font-size: 9px; }
   }
+
+  /* ── TABLET PORTRAIT (600px+) ── */
+  @media (min-width: 600px) {
+    .app { max-width: 600px; padding: 16px 24px 40px; }
+    .score-display { font-size: 88px; }
+    .clock-display { font-size: 42px; }
+    .clock-bar { padding: 14px 22px; }
+    .team-card { padding: 20px 16px 16px; }
+    .section { padding: 18px; }
+    .tabs { margin: 14px 0 0; }
+    .tab { font-size: 11px; padding: 11px 4px; }
+    .field { font-size: 14px; padding: 11px 13px; }
+    .submit-btn { font-size: 16px; padding: 14px; }
+  }
+
+  /* ── TABLET LANDSCAPE / DESKTOP (840px+) ── */
+  @media (min-width: 840px) {
+    .app { max-width: 100%; padding: 16px 32px 40px; }
+
+    /* Dvousloupcový layout — levý sloupec fixní, pravý flexibilní */
+    .tablet-layout {
+      display: grid;
+      grid-template-columns: 380px 1fr;
+      gap: 20px;
+      align-items: start;
+    }
+    .tablet-left { display: flex; flex-direction: column; gap: 0; position: sticky; top: 16px; }
+    .tablet-right { min-width: 0; }
+
+    .score-display { font-size: 80px; }
+    .clock-display { font-size: 38px; }
+    .section { padding: 18px; }
+    .entry-list { max-height: 320px; }
+    .roster-cols { grid-template-columns: 1fr 1fr; gap: 14px; }
+  }
 </style>
 </head>
 <body>
@@ -272,16 +307,7 @@
 
   <header>
     <div class="axono-logo">
-      <svg viewBox="0 0 420 50" xmlns="http://www.w3.org/2000/svg" fill="none">
-        <text
-          x="210" y="40"
-          text-anchor="middle"
-          font-family="'Bebas Neue', sans-serif"
-          font-size="46"
-          letter-spacing="8"
-          fill="#1a1a1a"
-        >AXONO SYNC</text>
-      </svg>
+      <img src="/logo.png" alt="AXONO SYNC" onerror="this.outerHTML='<span style=\'font-family:Bebas Neue,sans-serif;font-size:32px;letter-spacing:6px;color:var(--dark)\'>AXONO SYNC</span>'">
     </div>
     <div id="saveIndicator" style="opacity:0;transition:opacity 0.4s;font-size:10px;color:var(--green);font-family:'Inter',sans-serif;font-weight:600;letter-spacing:1px;margin-top:2px;">✓ uloženo</div>
   </header>
@@ -313,6 +339,8 @@
   </div>
 
   <!-- HODINY -->
+  <div class="tablet-layout">
+  <div class="tablet-left">
   <div class="clock-bar">
     <div class="period-block">
       <div class="period-nav">
@@ -365,6 +393,8 @@
       <div class="pen-badges" id="penBadgesB"></div>
     </div>
   </div>
+  </div><!-- /tablet-left -->
+  <div class="tablet-right">
 
   <!-- ZÁLOŽKY -->
   <div class="tabs">
@@ -560,6 +590,8 @@
     <button class="ctrl-btn" onclick="exportGame()">📤 Export</button>
     <button class="ctrl-btn danger" onclick="resetGame()">↺ Reset</button>
   </div>
+  </div><!-- /tablet-right -->
+  </div><!-- /tablet-layout -->
 </div>
 <div class="toast" id="toast"></div>
 

@@ -43,8 +43,7 @@
     min-height: 100vh; padding: 24px; gap: 16px;
   }
   .connect-logo-img {
-    width: 180px; height: auto;
-    filter: invert(1) sepia(1) saturate(5) hue-rotate(320deg) brightness(0.85);
+    width: 280px; height: auto;
   }
   .connect-live-badge {
     font-family: 'Bebas Neue', sans-serif; font-size: 11px;
@@ -98,9 +97,7 @@
     padding: 16px 0 8px;
   }
   .d-header-logo { display: flex; flex-direction: column; gap: 2px; }
-  .d-logo-img { height: 28px; width: auto;
-    filter: invert(1) sepia(1) saturate(5) hue-rotate(320deg) brightness(0.85);
-  }
+  .d-logo-img { height: 44px; width: auto; }
   .d-live-badge {
     font-family: 'Bebas Neue', sans-serif; font-size: 9px;
     letter-spacing: 4px; color: var(--red); text-transform: uppercase;
@@ -263,6 +260,34 @@
     .d-score { font-size: 58px; }
     .d-clock { font-size: 26px; }
   }
+
+  /* ── TABLET PORTRAIT (600px+) ── */
+  @media (min-width: 600px) {
+    .display-wrap { max-width: 600px; padding: 16px 24px 40px; }
+    .d-score { font-size: 88px; }
+    .d-clock { font-size: 42px; }
+    .d-team-card { padding: 20px 16px 16px; }
+    .d-section { padding: 18px; }
+    .d-section-title { font-size: 14px; }
+  }
+
+  /* ── TABLET LANDSCAPE / DESKTOP (840px+) ── */
+  @media (min-width: 840px) {
+    .display-wrap { max-width: 100%; padding: 16px 32px 40px; }
+
+    .d-tablet-layout {
+      display: grid;
+      grid-template-columns: 360px 1fr;
+      gap: 20px;
+      align-items: start;
+    }
+    .d-tablet-left { position: sticky; top: 16px; display: flex; flex-direction: column; gap: 0; }
+    .d-tablet-right { min-width: 0; display: flex; flex-direction: column; gap: 0; }
+
+    .d-score { font-size: 80px; }
+    .d-clock { font-size: 36px; }
+    .d-feed { max-height: 360px; }
+  }
 </style>
 </head>
 <body>
@@ -301,6 +326,10 @@
       </div>
     </div>
 
+    <!-- Clock + Scoreboard LEFT, Feed+Stats RIGHT on tablet -->
+    <div class="d-tablet-layout">
+    <div class="d-tablet-left">
+
     <!-- Clock -->
     <div class="d-clock-bar">
       <div class="d-period" id="dPeriod">TŘETINA 1</div>
@@ -334,6 +363,9 @@
       <div class="d-feed" id="dActivePens"></div>
     </div>
 
+    </div><!-- /d-tablet-left -->
+    <div class="d-tablet-right">
+
     <!-- Goal feed -->
     <div class="d-section">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
@@ -349,6 +381,9 @@
       <div class="d-stats" id="dStats"><div class="empty-msg">Statistiky se zobrazí po prvním gólu.</div></div>
     </div>
 
+    </div><!-- /d-tablet-right -->
+    </div><!-- /d-tablet-layout -->
+
   </div>
 </div>
 
@@ -358,8 +393,8 @@
 <script>
 // ─── CONFIG ───────────────────────────────────────────────────────────────────
 // 👉 Stejné údaje jako v axono-sync.html — vyplňte Project URL a anon key
-const SUPABASE_URL = 'https://wdwmjjbcphntymodnbub.supabase.co';  // ← sem
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indkd21qamJjcGhudHltb2RuYnViIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMyMjk0NDQsImV4cCI6MjA4ODgwNTQ0NH0.5Er4or14JJZveXexxO7XCaRIhguZ3FHuLWDJbyzB0oU';          // ← sem
+const SUPABASE_URL = 'https://wdwmjjbcphntymodnbub.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indkd21qamJjcGhudHltb2RuYnViIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMyMjk0NDQsImV4cCI6MjA4ODgwNTQ0NH0.5Er4or14JJZveXexxO7XCaRIhguZ3FHuLWDJbyzB0oU';
 
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
