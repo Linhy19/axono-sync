@@ -1801,9 +1801,11 @@ async function deactivateClubPlayer(id, name) {
 
 // Tlačítko "NAČÍST SOUPISKU AXONO" nyní načítá z DB
 async function loadDefaultRoster() {
-  const team = state.rosterTeam;
-  if (state.rosters[team].length > 0 && !confirm(`Přepsat stávající soupisku (${state.rosters[team].length} hráčů)?`)) return;
-  await loadClubRoster(team);
+  const hasA = state.rosters['A'].length > 0;
+  const hasB = state.rosters['B'].length > 0;
+  if ((hasA || hasB) && !confirm(`Přepsat stávající soupisky?`)) return;
+  await Promise.all([loadClubRoster('A', true), loadClubRoster('B', true)]);
+  showToast(`⚡ Obě soupisky načteny`);
 }
 
 
