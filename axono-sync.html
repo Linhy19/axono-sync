@@ -321,6 +321,28 @@
     .score-display { font-size: 150px; }
     .clock-display { font-size: 58px; }
   }
+  /* PŘESTÁVKA BANNER */
+  .break-banner {
+    background: var(--dark); color: #fff;
+    border-radius: 14px; padding: 14px 20px; margin: 10px 0;
+    display: none; align-items: center; justify-content: space-between; gap: 12px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+    animation: slideIn 0.3s ease;
+  }
+  .break-banner.visible { display: flex; }
+  .break-info { display: flex; flex-direction: column; gap: 2px; }
+  .break-label { font-family: 'Bebas Neue', sans-serif; font-size: 13px; letter-spacing: 3px; color: var(--warn); }
+  .break-clock { font-family: 'Bebas Neue', sans-serif; font-size: 36px; letter-spacing: 2px; color: #fff; }
+  .break-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+  .break-btn {
+    padding: 8px 16px; border-radius: 8px; border: none; cursor: pointer;
+    font-family: 'Bebas Neue', sans-serif; font-size: 13px; letter-spacing: 1px;
+    transition: all 0.15s; white-space: nowrap;
+  }
+  .break-btn.start-period { background: var(--red); color: #fff; box-shadow: 0 3px 10px var(--red-glow); }
+  .break-btn.skip { background: rgba(255,255,255,0.12); color: #fff; border: 1px solid rgba(255,255,255,0.2); }
+  .break-btn.edit-time { background: transparent; color: rgba(255,255,255,0.5); border: 1px solid rgba(255,255,255,0.15); font-size: 11px; }
+  .break-btn:hover { filter: brightness(1.2); }
 </style>
 </head>
 <body>
@@ -345,6 +367,7 @@
     <div style="display:flex;gap:6px;flex-wrap:wrap;">
       <button onclick="createNewMatch()" style="background:var(--red);border:none;border-radius:7px;color:#fff;font-family:'Bebas Neue',sans-serif;font-size:13px;letter-spacing:1px;padding:8px 14px;cursor:pointer;">➕ NOVÝ ZÁPAS</button>
       <button onclick="showJoinDialog()" style="background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:7px;color:#fff;font-family:'Bebas Neue',sans-serif;font-size:13px;letter-spacing:1px;padding:8px 14px;cursor:pointer;">🔗 PŘIPOJIT SE</button>
+      <button id="copyLiveBtn" onclick="copyLiveLink()" style="display:none;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:7px;color:#4cff8f;font-family:'Bebas Neue',sans-serif;font-size:13px;letter-spacing:1px;padding:8px 14px;cursor:pointer;" title="Zkopírovat odkaz na LIVE stránku">● LIVE ODKAZ</button>
     </div>
     <div id="syncDot" style="width:8px;height:8px;border-radius:50%;background:#444;flex-shrink:0;" title="Stav připojení"></div>
   </div>
@@ -372,6 +395,19 @@
     <div class="clock-controls">
       <button class="clock-btn start" id="clockStartBtn" onclick="toggleClock()">▶ START</button>
       <button class="clock-btn reset-c" onclick="resetClock()">↺</button>
+    </div>
+  </div>
+
+  <!-- PŘESTÁVKA BANNER -->
+  <div class="break-banner" id="breakBanner">
+    <div class="break-info">
+      <div class="break-label" id="breakLabel">PŘESTÁVKA</div>
+      <div class="break-clock" id="breakClock">15:00</div>
+    </div>
+    <div class="break-actions">
+      <button class="break-btn edit-time" onclick="editBreakTime()">✎ upravit</button>
+      <button class="break-btn skip" onclick="skipBreak()">⏭ přeskočit</button>
+      <button class="break-btn start-period" onclick="startNextPeriod()">▶ SPUSTIT TŘETINU</button>
     </div>
   </div>
 
@@ -597,6 +633,11 @@
           <span id="eventCount" style="font-size:11px;color:var(--muted);">0 událostí</span>
         </div>
         <div class="entry-list" id="eventLog"><div class="empty-msg">Žádné události. Zápas začíná!</div></div>
+        <!-- Čas přestávek -->
+        <div id="breakSummary" style="display:none;margin-top:10px;padding:8px 12px;background:var(--bg);border:1.5px solid var(--line);border-radius:9px;border-left:3px solid var(--warn);display:flex;align-items:center;justify-content:space-between;">
+          <span style="font-size:12px;color:var(--muted);font-family:'Inter',sans-serif;">⏸ Celkový čas přestávek</span>
+          <span id="breakTotalDisplay" style="font-family:'Bebas Neue',sans-serif;font-size:18px;color:var(--warn);">0:00</span>
+        </div>
       </div>
       <div>
         <div class="section-header"><div class="section-title">Statistiky hráčů</div></div>
@@ -670,7 +711,12 @@ function startClock() {
     state.clock.seconds = Math.max(0, state.clock.seconds - 1);
     renderClock();
     tickPenalties();
-    if (state.clock.seconds === 0) { stopClock(); syncClockToDb(); showToast('⏱ Konec třetiny!'); }
+    if (state.clock.seconds === 0) {
+      stopClock();
+      syncClockToDb();
+      showToast('⏱ Konec třetiny!');
+      startBreak(state.period);
+    }
   }, 1000);
   syncClockToDb();
 }
@@ -741,11 +787,9 @@ function applyClockFromDb(match) {
       renderClock();
       tickPenalties();
       if (state.clock.seconds === 0) {
-        clearInterval(state.clock.interval);
-        state.clock.running = false;
-        document.getElementById('clockStartBtn').textContent = '▶ START';
-        document.getElementById('clockStartBtn').className = 'clock-btn start';
+        stopClockLocal();
         showToast('⏱ Konec třetiny!');
+        startBreak(state.period);
       }
     }, 1000);
   } else {
@@ -1075,10 +1119,127 @@ function copyMatchLink() {
   url.searchParams.set('match', currentMatchCode);
   navigator.clipboard.writeText(url.toString())
     .then(() => showToast('🔗 Odkaz zkopírován!'))
-    .catch(() => {
-      // Fallback pro starší prohlížeče
-      prompt('Zkopírujte tento odkaz:', url.toString());
-    });
+    .catch(() => { prompt('Zkopírujte tento odkaz:', url.toString()); });
+}
+
+function copyLiveLink() {
+  // Sestaví URL na axono-display.html se stejným kódem
+  const base = window.location.href.replace('axono-sync.html', 'axono-display.html').split('?')[0];
+  const url = base + '?match=' + currentMatchCode;
+  navigator.clipboard.writeText(url)
+    .then(() => showToast('● LIVE odkaz zkopírován!'))
+    .catch(() => { prompt('Zkopírujte LIVE odkaz:', url); });
+}
+
+// ─── PŘESTÁVKA ────────────────────────────────────────────────────────────────
+let breakState = { active: false, startedAt: null, elapsed: 0, interval: null, afterPeriod: 0 };
+
+function startBreak(afterPeriod) {
+  clearInterval(breakState.interval);
+  breakState.active = true;
+  breakState.afterPeriod = afterPeriod;
+  breakState.startedAt = Date.now();
+  breakState.elapsed = 0;
+  const label = afterPeriod >= 3 ? 'PŘESTÁVKA PŘED PRODL.' : `PŘESTÁVKA PO ${afterPeriod}. TŘETINĚ`;
+  document.getElementById('breakLabel').textContent = label;
+  renderBreakClock();
+  document.getElementById('breakBanner').classList.add('visible');
+  // Uložit do DB
+  saveBreakToDb(true);
+  breakState.interval = setInterval(() => {
+    breakState.elapsed = Math.floor((Date.now() - breakState.startedAt) / 1000);
+    renderBreakClock();
+  }, 1000);
+}
+
+function renderBreakClock() {
+  const s = breakState.elapsed;
+  document.getElementById('breakClock').textContent =
+    `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
+}
+
+async function saveBreakToDb(active) {
+  if (!currentMatchId) return;
+  try {
+    const update = { break_active: active, updated_at: new Date().toISOString() };
+    if (active) update.break_started_at = new Date(breakState.startedAt).toISOString();
+    else {
+      update.break_started_at = null;
+      // Přičíst uplynulý čas k celkovým přestávkám
+      const elapsed = Math.floor((Date.now() - breakState.startedAt) / 1000);
+      update.break_total_seconds = (state.breakTotalSeconds || 0) + elapsed;
+      state.breakTotalSeconds = update.break_total_seconds;
+    }
+    await sb.from('matches').update(update).eq('id', currentMatchId);
+  } catch(e) { console.warn('Break sync failed', e); }
+}
+
+function skipBreak() {
+  clearInterval(breakState.interval);
+  if (breakState.active) saveBreakToDb(false);
+  breakState.active = false;
+  document.getElementById('breakBanner').classList.remove('visible');
+  setTimeout(renderBreakSummary, 300); // po DB uložení
+}
+
+function editBreakTime() {
+  // Umožní ručně nastavit uplynulý čas (oprava chyby)
+  const cur = Math.floor(breakState.elapsed / 60);
+  const input = prompt(`Opravit uplynulý čas přestávky (minuty, aktuálně ${cur}):`, cur);
+  if (input === null) return;
+  const mins = parseInt(input);
+  if (!isNaN(mins) && mins >= 0) {
+    breakState.startedAt = Date.now() - mins * 60 * 1000;
+    breakState.elapsed = mins * 60;
+    renderBreakClock();
+    saveBreakToDb(true);
+  }
+}
+
+function startNextPeriod() {
+  skipBreak();
+  const nextPeriod = state.period + 1;
+  if (nextPeriod <= 5 && state.period < nextPeriod) changePeriod(1);
+  state.clock.seconds = state.period >= 4 ? 5*60 : 20*60;
+  renderClock();
+  startClock();
+}
+
+// Aplikovat stav přestávky z DB (pro druhé zařízení / reload)
+function applyBreakFromDb(match) {
+  if (match.break_active && match.break_started_at) {
+    clearInterval(breakState.interval);
+    breakState.active = true;
+    breakState.startedAt = new Date(match.break_started_at).getTime();
+    breakState.elapsed = Math.floor((Date.now() - breakState.startedAt) / 1000);
+    breakState.afterPeriod = match.period;
+    const label = match.period >= 3 ? 'PŘESTÁVKA PŘED PRODL.' : `PŘESTÁVKA PO ${match.period}. TŘETINĚ`;
+    document.getElementById('breakLabel').textContent = label;
+    renderBreakClock();
+    document.getElementById('breakBanner').classList.add('visible');
+    breakState.interval = setInterval(() => {
+      breakState.elapsed = Math.floor((Date.now() - breakState.startedAt) / 1000);
+      renderBreakClock();
+    }, 1000);
+  } else {
+    if (breakState.active) skipBreak();
+  }
+  state.breakTotalSeconds = match.break_total_seconds || 0;
+  renderBreakSummary();
+}
+
+function renderBreakSummary() {
+  const total = state.breakTotalSeconds || 0;
+  const el = document.getElementById('breakSummary');
+  const disp = document.getElementById('breakTotalDisplay');
+  if (!el || !disp) return;
+  if (total > 0) {
+    el.style.display = 'flex';
+    const m = Math.floor(total / 60), s = total % 60;
+    disp.textContent = `${m}:${String(s).padStart(2,'0')}`;
+  } else {
+    el.style.display = 'none';
+  }
 }
 
 async function loadMatch(matchId, code) {
@@ -1087,6 +1248,8 @@ async function loadMatch(matchId, code) {
   document.getElementById('matchCodeDisplay').textContent = code;
   const copyBtn = document.getElementById('copyLinkBtn');
   if (copyBtn) copyBtn.style.display = 'block';
+  const liveBtn = document.getElementById('copyLiveBtn');
+  if (liveBtn) liveBtn.style.display = 'block';
   localStorage.setItem('axono_last_match', JSON.stringify({ matchId, code }));
 
   // Reset local state — stopClockLocal nepíše do DB
@@ -1105,6 +1268,7 @@ async function loadMatch(matchId, code) {
     document.getElementById('teamBName').value = match.team_b_name;
     document.getElementById('periodDisplay').textContent = PERIODS[state.period] || 'TŘETINA 1';
     applyClockFromDb(match); // správně dopočítá čas i pokud hodiny běží
+    applyBreakFromDb(match); // obnoví přestávku pokud probíhá
   }
 
   // Fetch goals

@@ -364,6 +364,15 @@
       <div class="d-clock-status" id="dClockStatus">STOP</div>
     </div>
 
+    <!-- PŘESTÁVKA BANNER -->
+    <div id="dBreakBanner" style="display:none;background:var(--dark);border-radius:14px;padding:14px 22px;margin:8px 0;box-shadow:0 4px 20px rgba(0,0,0,0.12);display:none;align-items:center;justify-content:space-between;gap:12px;">
+      <div>
+        <div id="dBreakLabel" style="font-family:'Bebas Neue',sans-serif;font-size:13px;letter-spacing:3px;color:var(--warn);">PŘESTÁVKA</div>
+        <div id="dBreakClock" style="font-family:'Bebas Neue',sans-serif;font-size:38px;letter-spacing:2px;color:#fff;">00:00</div>
+      </div>
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:13px;letter-spacing:2px;color:rgba(255,255,255,0.35);">⏸ PŘERUŠENO</div>
+    </div>
+
     <!-- SKÓRE — přes celou šířku, vycentrované -->
     <div class="d-scoreboard">
       <div class="d-team-card" id="dCardA">
@@ -517,6 +526,7 @@ function applyMatch(match) {
   if (match.score_b > prevB) bumpScore('dScoreB');
 
   applyClockFromMatch(match);
+  applyBreakOnDisplay(match);
 }
 
 function bumpScore(id) {
@@ -525,7 +535,32 @@ function bumpScore(id) {
   setTimeout(() => el.classList.remove('bump'), 300);
 }
 
-// ─── CLOCK ────────────────────────────────────────────────────────────────────
+// ─── PŘESTÁVKA (DISPLAY) ─────────────────────────────────────────────────────
+let dBreakInterval = null;
+
+function applyBreakOnDisplay(match) {
+  clearInterval(dBreakInterval);
+  const banner = document.getElementById('dBreakBanner');
+  if (!banner) return;
+  if (match.break_active && match.break_started_at) {
+    const startedAt = new Date(match.break_started_at).getTime();
+    const label = match.period >= 3 ? 'PŘESTÁVKA PŘED PRODL.' : `PŘESTÁVKA PO ${match.period}. TŘETINĚ`;
+    document.getElementById('dBreakLabel').textContent = label;
+    banner.style.display = 'flex';
+    const tick = () => {
+      const s = Math.floor((Date.now() - startedAt) / 1000);
+      const m = Math.floor(s / 60);
+      document.getElementById('dBreakClock').textContent =
+        `${String(m).padStart(2,'0')}:${String(s % 60).padStart(2,'0')}`;
+    };
+    tick();
+    dBreakInterval = setInterval(tick, 1000);
+  } else {
+    banner.style.display = 'none';
+  }
+}
+
+
 function applyClockFromMatch(match) {
   clearInterval(state.clock.interval);
   state.clock.running = false;
