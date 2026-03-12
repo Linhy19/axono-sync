@@ -104,7 +104,11 @@
     box-shadow: 0 2px 12px var(--red-glow);
   }
   .match-item.active .match-item-code { color: var(--red); }
+  .match-item.active .match-item-teams { color: var(--dark); opacity: 1; }
+  .match-item.active .match-item-meta { color: var(--dark); opacity: 0.7; }
+  .match-item.active .match-item-score { color: var(--red); }
   .match-item.past { opacity: 0.45; }
+  .match-item.past.active { opacity: 1; }
   .match-item-code { font-family: 'Bebas Neue', sans-serif; font-size: 15px; letter-spacing: 2px; color: var(--dark); }
   .match-item-teams { font-size: 12px; color: var(--dark); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .match-item-meta { font-size: 10px; color: var(--muted); font-family: 'Inter', sans-serif; }
