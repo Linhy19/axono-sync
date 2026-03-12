@@ -1738,23 +1738,34 @@ async function reactivateClubPlayer(id, name) {
 async function loadClubRoster(team = 'A', silent = false) {
   setSyncDot('saving');
   try {
-    const { data, error } = await sb.from('club_roster')
-      .select('*').eq('active', true).order('num');
+    // Zjistit team_id z vybraného týmu v selectu na scoreboardu
+    const selId = team === 'A' ? 'teamAName' : 'teamBName';
+    const sel = document.getElementById(selId);
+    const selectedOption = sel?.options[sel.selectedIndex];
+    const teamId = selectedOption?.dataset?.id || null;
+
+    let query = sb.from('club_roster').select('*').eq('active', true).order('num');
+    if (teamId) {
+      query = query.eq('team_id', teamId);
+    } else {
+      // Fallback — žádný tým vybrán, načti domácí (is_home)
+      const { data: homeTeam } = await sb.from('teams').select('id').eq('is_home', true).eq('active', true).single().catch(() => ({ data: null }));
+      if (homeTeam?.id) query = query.eq('team_id', homeTeam.id);
+    }
+
+    const { data, error } = await query;
     if (error) throw error;
     if (!data || data.length === 0) {
-      if (!silent) showToast('📋 Soupiska klubu je prázdná — přidejte hráče v záložce Hráči');
+      if (!silent) showToast('📋 Soupiska pro tento tým je prázdná — přidejte hráče v Admin → Hráči');
       setSyncDot('ok');
       return;
     }
     state.rosters[team] = data.map(p => ({
-      id: p.id, num: p.num, name: p.name, cap: p.is_captain
+      id: p.id, num: p.num, name: p.name, cap: p.is_captain, goalie: p.is_goalie
     }));
     state.playerId = Math.max(state.playerId, data.length);
     renderRosters(); updatePlayerSelects();
-    if (!silent) {
-      showImportStatus(`✅ Načteno ${data.length} hráčů ze soupravy klubu`);
-      showToast(`⚡ Soupiska klubu načtena (${data.length} hráčů)`);
-    }
+    if (!silent) showToast(`⚡ Soupiska načtena (${data.length} hráčů)`);
     setSyncDot('ok');
     if (currentMatchId) syncRosterToDb(team);
   } catch(e) {
