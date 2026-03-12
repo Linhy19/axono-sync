@@ -1258,31 +1258,40 @@ ${stats.length ? `<div class="section">
 </div>
 </body></html>`;
 
-  // Otevřít v novém okně s možností tisku / uložení jako PDF
+  // Otevřít v novém okně — bezpečně bez <script> v template stringu
   const win = window.open('', '_blank', 'width=880,height=900');
-  win.document.write(`
-    ${html}
-    <div style="position:fixed;bottom:20px;right:20px;display:flex;gap:8px;z-index:999;">
-      <button onclick="window.print()" style="padding:10px 20px;background:#d10020;color:#fff;border:none;border-radius:8px;font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:2px;cursor:pointer;">🖨 TISK / PDF</button>
-      <button onclick="saveAsPng()" style="padding:10px 20px;background:#1a1a1a;color:#fff;border:none;border-radius:8px;font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:2px;cursor:pointer;">🖼 PNG</button>
-    </div>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-    <script>
-    async function saveAsPng() {
-      const btn = document.querySelector('div[style*="fixed"]');
-      btn.style.display = 'none';
-      const canvas = await html2canvas(document.body, { scale: 2, backgroundColor: '#fff', useCORS: true });
-      btn.style.display = 'flex';
-      const link = document.createElement('a');
-      link.download = 'zapas_${teamA.replace(/\s/g,'_')}_vs_${teamB.replace(/\s/g,'_')}.png';
-      link.href = canvas.toDataURL('image/png');
-      link.click();
-    }
-    window.onbeforeprint = () => document.querySelector('div[style*="fixed"]').style.display = 'none';
-    window.onafterprint = () => document.querySelector('div[style*="fixed"]').style.display = 'flex';
-    <\/script>
-  `);
+  const fileName = 'zapas_' + teamA.replace(/\s/g,'_') + '_vs_' + teamB.replace(/\s/g,'_');
+
+  // Tlačítka přidáme jako string bez backtick scriptů
+  const btnBar = '<div id="btnBar" style="position:fixed;bottom:20px;right:20px;display:flex;gap:8px;z-index:999;">'
+    + '<button id="btnPrint" style="padding:10px 20px;background:#d10020;color:#fff;border:none;border-radius:8px;font-family:sans-serif;font-size:13px;cursor:pointer;">&#128424; TISK / PDF</button>'
+    + '<button id="btnPng" style="padding:10px 20px;background:#1a1a1a;color:#fff;border:none;border-radius:8px;font-family:sans-serif;font-size:13px;cursor:pointer;">&#128444; PNG</button>'
+    + '</div>';
+
+  win.document.write(html + btnBar);
   win.document.close();
+
+  // Načíst html2canvas a navázat eventy přes reference na win
+  const s = win.document.createElement('script');
+  s.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+  win.document.head.appendChild(s);
+
+  win.document.getElementById('btnPrint').addEventListener('click', function() {
+    win.document.getElementById('btnBar').style.display = 'none';
+    win.print();
+    win.document.getElementById('btnBar').style.display = 'flex';
+  });
+
+  win.document.getElementById('btnPng').addEventListener('click', async function() {
+    win.document.getElementById('btnBar').style.display = 'none';
+    const canvas = await win.html2canvas(win.document.body, { scale: 2, backgroundColor: '#fff', useCORS: true });
+    win.document.getElementById('btnBar').style.display = 'flex';
+    const link = win.document.createElement('a');
+    link.download = fileName + '.png';
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+  });
+
   showToast('📄 Report otevřen');
 }
 
