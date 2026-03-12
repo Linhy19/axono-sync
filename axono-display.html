@@ -364,6 +364,11 @@
       <div class="d-clock-status" id="dClockStatus">STOP</div>
     </div>
 
+    <!-- ARÉNA -->
+    <div id="dArenaRow" style="display:none;text-align:center;font-family:'Inter',sans-serif;font-size:11px;color:var(--muted);letter-spacing:1.5px;padding:4px 0 2px;">
+      📍 <span id="dArenaText"></span>
+    </div>
+
     <!-- PŘESTÁVKA BANNER -->
     <div id="dBreakBanner" style="display:none;background:var(--dark);border-radius:14px;padding:14px 22px;margin:8px 0;box-shadow:0 4px 20px rgba(0,0,0,0.12);display:none;align-items:center;justify-content:space-between;gap:12px;">
       <div>
@@ -517,6 +522,9 @@ function applyMatch(match) {
   document.getElementById('dScoreA').textContent = match.score_a;
   document.getElementById('dScoreB').textContent = match.score_b;
 
+  // Arena — zobrazit pokud je k dispozici
+  applyArena(match);
+
   // Leading highlight
   document.getElementById('dCardA').classList.toggle('leading', match.score_a > match.score_b);
   document.getElementById('dCardB').classList.toggle('leading', match.score_b > match.score_a);
@@ -527,6 +535,30 @@ function applyMatch(match) {
 
   applyClockFromMatch(match);
   applyBreakOnDisplay(match);
+}
+
+async function applyArena(match) {
+  const row = document.getElementById('dArenaRow');
+  const txt = document.getElementById('dArenaText');
+  if (!row || !txt) return;
+  // Zkusit najít arénu domácího týmu
+  try {
+    const teamName = match.team_a_name;
+    if (!teamName || teamName === 'DOMÁCÍ') { row.style.display = 'none'; return; }
+    const { data } = await sb.from('teams').select('arena').eq('name', teamName).single();
+    if (data?.arena) {
+      // Přidat datum zápasu pokud existuje
+      let info = data.arena;
+      if (match.scheduled_at) {
+        const d = new Date(match.scheduled_at);
+        info += '  ·  ' + d.toLocaleString('cs-CZ', { day:'numeric', month:'numeric', hour:'2-digit', minute:'2-digit' });
+      }
+      txt.textContent = info;
+      row.style.display = 'block';
+    } else {
+      row.style.display = 'none';
+    }
+  } catch { row.style.display = 'none'; }
 }
 
 function bumpScore(id) {

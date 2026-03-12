@@ -39,20 +39,103 @@
   .app { position: relative; z-index: 1; max-width: 480px; margin: 0 auto; padding: 12px 14px 30px; }
 
   /* HEADER */
-  header { text-align: center; padding: 20px 0 10px; position: relative; }
+  header { text-align: center; padding: 20px 0 6px; position: relative; }
   header::after {
-    content: ''; display: block; margin: 10px auto 0;
+    content: ''; display: block; margin: 8px auto 0;
     width: 48px; height: 3px; border-radius: 2px;
     background: var(--red);
   }
-  .axono-logo { display: inline-block; margin-bottom: 4px; }
+  .axono-logo { display: inline-block; margin-bottom: 2px; }
   .axono-logo img { 
     width: min(400px, 50vw); height: auto; display: block; margin: 0 auto; 
+  }
+  .sync-badge {
+    font-family: 'Bebas Neue', sans-serif; font-size: 14px;
+    letter-spacing: 5px; color: var(--muted); text-transform: uppercase;
+    margin-top: 2px; margin-bottom: 2px;
   }
   .game-subtitle {
     font-family: 'Inter', sans-serif; font-size: 10px;
     font-weight: 600; letter-spacing: 3px; text-transform: uppercase; color: var(--muted);
   }
+
+  /* ── SIDEBAR (seznam zápasů) ── */
+  .sidebar-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.35); z-index: 100;
+  }
+  .sidebar-overlay.open { display: block; }
+  .sidebar {
+    position: fixed; top: 0; left: 0; bottom: 0; width: 300px; max-width: 88vw;
+    background: var(--surface); z-index: 101;
+    box-shadow: 4px 0 32px rgba(0,0,0,0.15);
+    display: flex; flex-direction: column;
+    transform: translateX(-100%); transition: transform 0.28s cubic-bezier(0.4,0,0.2,1);
+  }
+  .sidebar.open { transform: translateX(0); }
+  .sidebar-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 18px 16px 14px;
+    border-bottom: 1.5px solid var(--line);
+  }
+  .sidebar-title { font-family: 'Bebas Neue', sans-serif; font-size: 16px; letter-spacing: 3px; color: var(--dark); }
+  .sidebar-close {
+    background: none; border: none; font-size: 18px; cursor: pointer;
+    color: var(--muted); padding: 4px 8px; border-radius: 6px;
+    transition: background 0.15s;
+  }
+  .sidebar-close:hover { background: var(--bg); }
+  .sidebar-body { flex: 1; overflow-y: auto; padding: 10px 10px 20px; }
+  .sidebar-body::-webkit-scrollbar { width: 3px; }
+  .sidebar-body::-webkit-scrollbar-thumb { background: var(--line2); }
+  .sidebar-new-btn {
+    width: 100%; margin-bottom: 10px; padding: 10px;
+    background: var(--red); border: none; border-radius: 9px;
+    color: #fff; font-family: 'Bebas Neue', sans-serif;
+    font-size: 14px; letter-spacing: 2px; cursor: pointer;
+    box-shadow: 0 3px 12px var(--red-glow); transition: filter 0.15s;
+  }
+  .sidebar-new-btn:hover { filter: brightness(1.08); }
+  .match-item {
+    padding: 10px 12px; border-radius: 10px; margin-bottom: 5px;
+    border: 1.5px solid var(--line); background: var(--bg);
+    cursor: pointer; transition: all 0.15s;
+    display: flex; flex-direction: column; gap: 3px;
+  }
+  .match-item:hover { border-color: var(--red); background: var(--surface); }
+  .match-item.active { border-color: var(--red); background: var(--red-light); }
+  .match-item.past { opacity: 0.5; }
+  .match-item-code { font-family: 'Bebas Neue', sans-serif; font-size: 15px; letter-spacing: 2px; color: var(--dark); }
+  .match-item-teams { font-size: 12px; color: var(--dark); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .match-item-meta { font-size: 10px; color: var(--muted); font-family: 'Inter', sans-serif; }
+  .match-item-score { font-family: 'Bebas Neue', sans-serif; font-size: 13px; color: var(--red); letter-spacing: 1px; }
+  .match-section-label {
+    font-family: 'Bebas Neue', sans-serif; font-size: 10px; letter-spacing: 3px;
+    color: var(--muted); padding: 8px 4px 4px; border-bottom: 1px solid var(--line);
+    margin-bottom: 6px;
+  }
+
+  /* ── NOVÝ ZÁPAS MODAL ── */
+  .modal-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.4); z-index: 200;
+    align-items: center; justify-content: center; padding: 20px;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal-box {
+    background: var(--surface); border-radius: 18px;
+    padding: 24px; width: 100%; max-width: 400px;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.15);
+    display: flex; flex-direction: column; gap: 14px;
+  }
+  .modal-title { font-family: 'Bebas Neue', sans-serif; font-size: 18px; letter-spacing: 3px; color: var(--dark); }
+  .modal-row { display: flex; gap: 8px; align-items: center; }
+  .modal-label { font-size: 11px; color: var(--muted); font-family: 'Inter', sans-serif; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 3px; }
+  .modal-actions { display: flex; gap: 8px; margin-top: 4px; }
+  .modal-btn { flex: 1; padding: 12px; border-radius: 10px; border: none; cursor: pointer; font-family: 'Bebas Neue', sans-serif; font-size: 15px; letter-spacing: 2px; transition: all 0.15s; }
+  .modal-btn.confirm { background: var(--red); color: #fff; box-shadow: 0 3px 12px var(--red-glow); }
+  .modal-btn.cancel { background: var(--bg); color: var(--muted); border: 1.5px solid var(--line); }
+  .modal-btn:hover { filter: brightness(1.08); }
 
   /* CLOCK BAR */
   .clock-bar {
@@ -285,6 +368,16 @@
   @media (min-width: 840px) {
     .app { max-width: 960px; padding: 16px 40px 40px; }
 
+    /* Sidebar vždy viditelný jako levý panel */
+    .sidebar {
+      position: fixed; top: 0; left: 0; bottom: 0; width: 240px;
+      transform: none !important; box-shadow: none;
+      border-right: 1.5px solid var(--line);
+    }
+    .sidebar-overlay { display: none !important; }
+    body { padding-left: 240px; }
+    .sidebar-open-btn { display: none !important; }
+
     /* Skóre přes celou šířku — větší čísla */
     .scoreboard { margin: 16px 0; }
     .score-display { font-size: 130px; }
@@ -348,10 +441,50 @@
 <body>
 <div class="app">
 
-  <header>
-    <div class="axono-logo">
-      <img src="/logo.png" alt="AXONO SYNC" onerror="this.outerHTML='<span style=\'font-family:Bebas Neue,sans-serif;font-size:32px;letter-spacing:6px;color:var(--dark)\'>AXONO SYNC</span>'">
+  <!-- SIDEBAR OVERLAY -->
+  <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+
+  <!-- SIDEBAR -->
+  <div class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-title">ZÁPASY</div>
+      <button class="sidebar-close" onclick="closeSidebar()">✕</button>
     </div>
+    <div class="sidebar-body">
+      <button class="sidebar-new-btn" onclick="openNewMatchModal()">➕ NOVÝ ZÁPAS</button>
+      <div id="matchList"><div class="empty-msg" style="font-size:12px;">Načítám...</div></div>
+    </div>
+  </div>
+
+  <!-- NOVÝ ZÁPAS MODAL -->
+  <div class="modal-overlay" id="newMatchModal">
+    <div class="modal-box">
+      <div class="modal-title">NOVÝ ZÁPAS</div>
+      <div>
+        <div class="modal-label">Datum a čas</div>
+        <input class="field" type="datetime-local" id="newMatchDate" style="width:100%;" />
+      </div>
+      <div>
+        <div class="modal-label">Domácí tým</div>
+        <select class="field" id="newMatchTeamA" style="width:100%;cursor:pointer;"></select>
+      </div>
+      <div>
+        <div class="modal-label">Hosté</div>
+        <select class="field" id="newMatchTeamB" style="width:100%;cursor:pointer;"></select>
+      </div>
+      <div class="modal-actions">
+        <button class="modal-btn cancel" onclick="closeNewMatchModal()">ZRUŠIT</button>
+        <button class="modal-btn confirm" onclick="confirmNewMatch()">VYTVOŘIT</button>
+      </div>
+    </div>
+  </div>
+
+  <header>
+    <button class="sidebar-open-btn" id="sidebarOpenBtn" onclick="openSidebar()" style="position:absolute;left:0;top:50%;transform:translateY(-50%);background:var(--bg);border:1.5px solid var(--line);border-radius:8px;padding:7px 11px;cursor:pointer;font-size:16px;color:var(--dark);">☰</button>
+    <div class="axono-logo">
+      <img src="/logo.png" alt="AXONO" onerror="this.outerHTML='<span style=\'font-family:Bebas Neue,sans-serif;font-size:32px;letter-spacing:6px;color:var(--dark)\'>AXONO</span>'">
+    </div>
+    <div class="sync-badge">SYNC</div>
     <div id="saveIndicator" style="opacity:0;transition:opacity 0.4s;font-size:10px;color:var(--green);font-family:'Inter',sans-serif;font-weight:600;letter-spacing:1px;margin-top:2px;">✓ uloženo</div>
   </header>
 
@@ -365,7 +498,6 @@
       </div>
     </div>
     <div style="display:flex;gap:6px;flex-wrap:wrap;">
-      <button onclick="createNewMatch()" style="background:var(--red);border:none;border-radius:7px;color:#fff;font-family:'Bebas Neue',sans-serif;font-size:13px;letter-spacing:1px;padding:8px 14px;cursor:pointer;">➕ NOVÝ ZÁPAS</button>
       <button onclick="showJoinDialog()" style="background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:7px;color:#fff;font-family:'Bebas Neue',sans-serif;font-size:13px;letter-spacing:1px;padding:8px 14px;cursor:pointer;">🔗 PŘIPOJIT SE</button>
       <button id="copyLiveBtn" onclick="copyLiveLink()" style="display:none;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:7px;color:#4cff8f;font-family:'Bebas Neue',sans-serif;font-size:13px;letter-spacing:1px;padding:8px 14px;cursor:pointer;" title="Zkopírovat odkaz na LIVE stránku">● LIVE ODKAZ</button>
     </div>
@@ -610,6 +742,7 @@
         <input class="field" id="newTeamName" placeholder="Název týmu (např. HC Axono)" maxlength="30" />
         <input class="field" id="newTeamShort" placeholder="Zkratka" maxlength="8" style="max-width:90px;" />
       </div>
+      <input class="field" id="newTeamArena" placeholder="Domácí aréna (např. Zimní stadion Axono)" maxlength="60" />
       <div class="form-row" style="align-items:center;gap:10px;">
         <label style="font-size:11px;color:var(--muted);font-family:'Inter',sans-serif;flex-shrink:0;">Barva:</label>
         <input type="color" id="newTeamColor" value="#d10020" style="width:36px;height:36px;border:none;border-radius:6px;cursor:pointer;padding:2px;" />
@@ -1048,7 +1181,126 @@ function setSyncDot(status) {
   dot.title = { ok: 'Připojeno', saving: 'Ukládám...', error: 'Chyba připojení', off: 'Nepřipojeno' }[status] || '';
 }
 
-async function createNewMatch() {
+// ─── SIDEBAR ──────────────────────────────────────────────────────────────────
+function openSidebar() {
+  document.getElementById('sidebar').classList.add('open');
+  document.getElementById('sidebarOverlay').classList.add('open');
+  renderMatchList();
+}
+function closeSidebar() {
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('sidebarOverlay').classList.remove('open');
+}
+
+async function renderMatchList() {
+  const el = document.getElementById('matchList');
+  el.innerHTML = '<div class="empty-msg" style="font-size:12px;">Načítám...</div>';
+  try {
+    const { data } = await sb.from('matches').select('id,code,team_a_name,team_b_name,score_a,score_b,period,scheduled_at,created_at').order('scheduled_at', { ascending: false, nullsFirst: false }).order('created_at', { ascending: false });
+    const matches = data || [];
+    if (!matches.length) { el.innerHTML = '<div class="empty-msg" style="font-size:12px;">Žádné zápasy.</div>'; return; }
+
+    const now = new Date();
+    const upcoming = matches.filter(m => m.scheduled_at && new Date(m.scheduled_at) > now);
+    const past = matches.filter(m => !m.scheduled_at || new Date(m.scheduled_at) <= now);
+
+    let html = '';
+    if (upcoming.length) {
+      html += `<div class="match-section-label">NADCHÁZEJÍCÍ</div>`;
+      upcoming.forEach(m => { html += matchItemHtml(m, false); });
+    }
+    if (past.length) {
+      html += `<div class="match-section-label">HISTORIE</div>`;
+      past.forEach(m => { html += matchItemHtml(m, true); });
+    }
+    el.innerHTML = html;
+  } catch(e) { el.innerHTML = '<div class="empty-msg" style="font-size:12px;">Chyba načítání.</div>'; }
+}
+
+function matchItemHtml(m, isPast) {
+  const isActive = m.id === currentMatchId;
+  const teamsLine = (m.team_a_name && m.team_b_name && m.team_a_name !== 'DOMÁCÍ')
+    ? `${m.team_a_name} vs ${m.team_b_name}` : '';
+  const scoreLine = (m.score_a !== null) ? `${m.score_a} : ${m.score_b}` : '';
+  const dateLine = m.scheduled_at
+    ? new Date(m.scheduled_at).toLocaleString('cs-CZ', { day:'numeric', month:'numeric', hour:'2-digit', minute:'2-digit' })
+    : new Date(m.created_at).toLocaleDateString('cs-CZ', { day:'numeric', month:'numeric' });
+  return `<div class="match-item${isActive?' active':''}${isPast?' past':''}" onclick="selectMatchFromList('${m.id}','${m.code}')">
+    <div style="display:flex;justify-content:space-between;align-items:center;">
+      <div class="match-item-code">${m.code}</div>
+      ${scoreLine ? `<div class="match-item-score">${scoreLine}</div>` : ''}
+    </div>
+    ${teamsLine ? `<div class="match-item-teams">${teamsLine}</div>` : ''}
+    <div class="match-item-meta">${dateLine}</div>
+  </div>`;
+}
+
+async function selectMatchFromList(id, code) {
+  if (id === currentMatchId) { closeSidebar(); return; }
+  if (hasActiveGame() && !confirm('Přepnout na jiný zápas?')) return;
+  stopClock();
+  await loadMatch(id, code);
+  const newUrl = new URL(window.location.href);
+  newUrl.searchParams.set('match', code);
+  window.history.replaceState({}, '', newUrl);
+  closeSidebar();
+  showToast(`✅ Zápas: ${code}`);
+}
+
+// ─── NOVÝ ZÁPAS MODAL ─────────────────────────────────────────────────────────
+function openNewMatchModal() {
+  // Předvyplnit datetime na teď
+  const now = new Date();
+  now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+  document.getElementById('newMatchDate').value = now.toISOString().slice(0,16);
+  // Naplnit selecty týmy
+  const allTeams = window._teamsCache || [];
+  ['newMatchTeamA','newMatchTeamB'].forEach((selId, i) => {
+    const sel = document.getElementById(selId);
+    sel.innerHTML = `<option value="">— ${i===0?'Domácí':'Hosté'} —</option>`;
+    allTeams.forEach(t => {
+      sel.innerHTML += `<option value="${t.name}">${t.name}${t.short?' ('+t.short+')':''}</option>`;
+    });
+  });
+  document.getElementById('newMatchModal').classList.add('open');
+  closeSidebar();
+}
+
+function closeNewMatchModal() {
+  document.getElementById('newMatchModal').classList.remove('open');
+}
+
+async function confirmNewMatch() {
+  if (hasActiveGame() && !confirm('Aktuální zápas bude ukončen. Vytvořit nový?')) return;
+  stopClock();
+  const code = generateMatchCode();
+  const teamA = document.getElementById('newMatchTeamA').value || 'DOMÁCÍ';
+  const teamB = document.getElementById('newMatchTeamB').value || 'HOSTÉ';
+  const dateVal = document.getElementById('newMatchDate').value;
+  const scheduledAt = dateVal ? new Date(dateVal).toISOString() : null;
+  setSyncDot('saving');
+  try {
+    const { data, error } = await sb.from('matches').insert({
+      code, team_a_name: teamA, team_b_name: teamB,
+      score_a: 0, score_b: 0, period: 1, clock_seconds: 1200,
+      scheduled_at: scheduledAt
+    }).select().single();
+    if (error) throw error;
+    closeNewMatchModal();
+    await loadMatch(data.id, code);
+    const newUrl = new URL(window.location.href);
+    newUrl.searchParams.set('match', code);
+    window.history.replaceState({}, '', newUrl);
+    await loadClubRoster('A', true);
+    showToast(`✅ Zápas vytvořen: ${code}`);
+    setSyncDot('ok');
+  } catch(e) {
+    setSyncDot('error');
+    showToast('❌ Chyba: ' + e.message);
+  }
+}
+
+
   if (hasActiveGame() && !confirm('Aktuální zápas bude ukončen. Vytvořit nový?')) return;
   stopClock();
   const code = generateMatchCode();
@@ -1731,6 +1983,7 @@ async function loadTeams() {
     const { data, error } = await sb.from('teams').select('*').eq('active', true).order('name');
     if (error) throw error;
     teamsCache = data || [];
+    window._teamsCache = teamsCache; // pro modal
     populateTeamSelects();
     return teamsCache;
   } catch(e) {
@@ -1822,14 +2075,16 @@ async function renderTeamsList() {
 async function addTeam() {
   const name = document.getElementById('newTeamName').value.trim();
   const short = document.getElementById('newTeamShort').value.trim().toUpperCase();
+  const arena = document.getElementById('newTeamArena').value.trim();
   const color = document.getElementById('newTeamColor').value;
   const isHome = document.getElementById('newTeamIsHome').checked;
   if (!name) { showToast('Zadejte název týmu!'); return; }
   try {
-    const { error } = await sb.from('teams').insert({ name, short: short || null, color, is_home: isHome, active: true });
+    const { error } = await sb.from('teams').insert({ name, short: short || null, arena: arena || null, color, is_home: isHome, active: true });
     if (error) throw error;
     document.getElementById('newTeamName').value = '';
     document.getElementById('newTeamShort').value = '';
+    document.getElementById('newTeamArena').value = '';
     document.getElementById('newTeamIsHome').checked = false;
     showToast(`✅ Tým ${name} přidán`);
     await loadTeams();
