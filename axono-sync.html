@@ -110,7 +110,7 @@
   .match-item.past { opacity: 0.45; }
   .match-item.past.active { opacity: 1; }
   .match-item-code { font-family: 'Bebas Neue', sans-serif; font-size: 15px; letter-spacing: 2px; color: var(--dark); }
-  .match-item-teams { font-size: 12px; color: var(--dark); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .match-item-teams { font-size: 12px; color: var(--dark); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 220px; }
   .match-item-meta { font-size: 10px; color: var(--muted); font-family: 'Inter', sans-serif; }
   .match-item-score { font-family: 'Bebas Neue', sans-serif; font-size: 13px; color: var(--red); letter-spacing: 1px; }
   .match-section-label {
@@ -386,12 +386,12 @@
 
     /* Sidebar vždy viditelný jako levý panel */
     .sidebar {
-      position: fixed; top: 0; left: 0; bottom: 0; width: 240px;
+      position: fixed; top: 0; left: 0; bottom: 0; width: 300px;
       transform: none !important; box-shadow: none;
       border-right: 1.5px solid var(--line);
     }
     .sidebar-overlay { display: none !important; }
-    body { padding-left: 240px; }
+    body { padding-left: 300px; }
     .sidebar-open-btn { display: none !important; }
 
     /* Skóre přes celou šířku — větší čísla */
@@ -1106,17 +1106,184 @@ function showToast(msg, gold=false) {
 
 // ─── EXPORT ───────────────────────────────────────────────────────────────────
 function exportGame() {
-  const a=getTeamName('A'), b=getTeamName('B');
-  let txt=`🏒 ZÁPASOVÝ PROTOKOL\n══════════════════════════════\n${a}  ${state.teamA} – ${state.teamB}  ${b}\n══════════════════════════════\n\nGÓLY:\n`;
-  state.goals.forEach((g,i)=>{ txt+=`${i+1}. [${g.teamName}] ${g.scorer}${g.assist?` (As: ${g.assist})`:''} — T${g.period} ${g.minute}'\n`; });
-  txt+=`\nTREST Y:\n`;
-  state.penalties.forEach((p,i)=>{ txt+=`${i+1}. [${p.teamName}] ${p.player} — ${p.mins>0?p.mins+' min':'do konce'}${p.reason?' ('+p.reason+')':''} T${p.period} ${p.minute}'\n`; });
-  txt+=`\nSOUPISKA DOMÁCÍCH:\n`; state.rosters.A.forEach(p=>{ txt+=`  #${p.num} ${p.name}${p.cap?' (K)':''}\n`; });
-  txt+=`\nSOUPISKA HOSTŮ:\n`; state.rosters.B.forEach(p=>{ txt+=`  #${p.num} ${p.name}${p.cap?' (K)':''}\n`; });
-  txt+=`\nVytvořeno: ${new Date().toLocaleString('cs-CZ')}`;
-  const blob=new Blob([txt],{type:'text/plain;charset=utf-8'});
-  const link=document.createElement('a'); link.href=URL.createObjectURL(blob); link.download=`zapas_${a}_vs_${b}.txt`; link.click();
-  showToast('Protokol exportován!');
+  const teamA = getTeamName('A');
+  const teamB = getTeamName('B');
+  const date = new Date().toLocaleDateString('cs-CZ', { day:'numeric', month:'long', year:'numeric' });
+
+  // Statistiky hráčů
+  const statsMap = {};
+  state.goals.forEach(g => {
+    if (g.scorer && g.scorer !== '—') {
+      const k = g.teamName + '|' + g.scorer;
+      if (!statsMap[k]) statsMap[k] = { name: g.scorer, team: g.teamName, goals: 0, assists: 0 };
+      statsMap[k].goals++;
+    }
+    if (g.assist && g.assist !== '—' && g.assist !== '') {
+      const k = g.teamName + '|' + g.assist;
+      if (!statsMap[k]) statsMap[k] = { name: g.assist, team: g.teamName, goals: 0, assists: 0 };
+      statsMap[k].assists++;
+    }
+  });
+  const stats = Object.values(statsMap).sort((a,b) => (b.goals+b.assists) - (a.goals+a.assists));
+
+  const goalsA = state.goals.filter(g => g.team === 'A');
+  const goalsB = state.goals.filter(g => g.team === 'B');
+  const pensA  = state.penalties.filter(p => p.team === 'A');
+  const pensB  = state.penalties.filter(p => p.team === 'B');
+
+  // Sestavit HTML pro report
+  const html = `<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&display=swap');
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Inter', sans-serif; background: #fff; color: #1a1a1a; width: 800px; padding: 40px; }
+  .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 28px; padding-bottom: 20px; border-bottom: 3px solid #d10020; }
+  .logo-area { display: flex; align-items: center; gap: 12px; }
+  .logo-text { font-family: 'Bebas Neue', sans-serif; font-size: 32px; letter-spacing: 4px; color: #1a1a1a; }
+  .report-badge { font-family: 'Bebas Neue', sans-serif; font-size: 11px; letter-spacing: 3px; color: #d10020; border: 1.5px solid #d10020; padding: 3px 8px; border-radius: 4px; }
+  .date { font-size: 12px; color: #999; font-weight: 500; text-align: right; }
+  .scoreboard { display: grid; grid-template-columns: 1fr auto 1fr; gap: 0; margin-bottom: 32px; background: #1a1a1a; border-radius: 16px; overflow: hidden; padding: 24px 32px; align-items: center; }
+  .team-side { display: flex; flex-direction: column; gap: 4px; }
+  .team-side.right { align-items: flex-end; text-align: right; }
+  .team-label { font-family: 'Bebas Neue', sans-serif; font-size: 22px; letter-spacing: 3px; color: #ffffff; }
+  .team-score { font-family: 'Bebas Neue', sans-serif; font-size: 80px; line-height: 1; color: #ffffff; }
+  .team-score.red { color: #d10020; }
+  .vs-center { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 0 24px; }
+  .vs-text { font-family: 'Bebas Neue', sans-serif; font-size: 18px; color: #666; letter-spacing: 2px; }
+  .period-text { font-size: 11px; color: #666; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; }
+  .section { margin-bottom: 24px; }
+  .section-title { font-family: 'Bebas Neue', sans-serif; font-size: 14px; letter-spacing: 3px; color: #d10020; margin-bottom: 10px; padding-bottom: 6px; border-bottom: 1.5px solid #f0f0f0; }
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .col-label { font-family: 'Bebas Neue', sans-serif; font-size: 11px; letter-spacing: 2px; color: #999; margin-bottom: 7px; }
+  .event-row { display: flex; align-items: flex-start; gap: 8px; padding: 6px 0; border-bottom: 1px solid #f5f5f5; font-size: 12px; }
+  .event-row:last-child { border-bottom: none; }
+  .event-min { font-family: 'Bebas Neue', sans-serif; font-size: 13px; color: #d10020; min-width: 28px; }
+  .event-name { font-weight: 600; }
+  .event-sub { color: #999; font-size: 11px; }
+  .empty { color: #ccc; font-size: 12px; font-style: italic; padding: 6px 0; }
+  .stats-row { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid #f5f5f5; font-size: 12px; }
+  .stats-row:last-child { border-bottom: none; }
+  .stats-num { font-family: 'Bebas Neue', sans-serif; font-size: 15px; color: #d10020; min-width: 20px; text-align: center; }
+  .stats-name { font-weight: 600; flex: 1; }
+  .stats-team { font-size: 11px; color: #999; }
+  .stats-badge { font-family: 'Bebas Neue', sans-serif; font-size: 12px; background: #f5f5f5; padding: 2px 7px; border-radius: 4px; color: #1a1a1a; }
+  .roster-row { font-size: 12px; padding: 4px 0; border-bottom: 1px solid #f8f8f8; display: flex; gap: 8px; }
+  .roster-num { font-family: 'Bebas Neue', sans-serif; color: #d10020; min-width: 28px; font-size: 13px; }
+  .footer { margin-top: 28px; padding-top: 14px; border-top: 1px solid #eee; display: flex; justify-content: space-between; font-size: 10px; color: #ccc; letter-spacing: 1px; }
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="logo-area">
+    <div class="logo-text">AXONO</div>
+    <div class="report-badge">PROTOKOL</div>
+  </div>
+  <div class="date">${date}</div>
+</div>
+
+<div class="scoreboard">
+  <div class="team-side">
+    <div class="team-label">${teamA}</div>
+    <div class="team-score${state.teamA > state.teamB ? ' red' : ''}">${state.teamA}</div>
+  </div>
+  <div class="vs-center">
+    <div class="vs-text">VS</div>
+    <div class="period-text">${state.period <= 3 ? state.period+'. třetina' : state.period === 4 ? 'Prodloužení' : 'Nájezdy'}</div>
+  </div>
+  <div class="team-side right">
+    <div class="team-label">${teamB}</div>
+    <div class="team-score${state.teamB > state.teamA ? ' red' : ''}">${state.teamB}</div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-title">GÓLY</div>
+  <div class="two-col">
+    <div>
+      <div class="col-label">${teamA}</div>
+      ${goalsA.length ? goalsA.map(g => `<div class="event-row"><span class="event-min">${g.minute}'</span><div><div class="event-name">${g.scorer||'—'}</div>${g.assist?`<div class="event-sub">↳ ${g.assist}</div>`:''}</div></div>`).join('') : '<div class="empty">Žádné góly</div>'}
+    </div>
+    <div>
+      <div class="col-label">${teamB}</div>
+      ${goalsB.length ? goalsB.map(g => `<div class="event-row"><span class="event-min">${g.minute}'</span><div><div class="event-name">${g.scorer||'—'}</div>${g.assist?`<div class="event-sub">↳ ${g.assist}</div>`:''}</div></div>`).join('') : '<div class="empty">Žádné góly</div>'}
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-title">TRESTY</div>
+  <div class="two-col">
+    <div>
+      <div class="col-label">${teamA}</div>
+      ${pensA.length ? pensA.map(p => `<div class="event-row"><span class="event-min">${p.minute}'</span><div><div class="event-name">${p.player||'—'}</div><div class="event-sub">${p.mins > 0 ? p.mins+' min' : 'do konce'}${p.reason?' · '+p.reason:''}</div></div></div>`).join('') : '<div class="empty">Žádné tresty</div>'}
+    </div>
+    <div>
+      <div class="col-label">${teamB}</div>
+      ${pensB.length ? pensB.map(p => `<div class="event-row"><span class="event-min">${p.minute}'</span><div><div class="event-name">${p.player||'—'}</div><div class="event-sub">${p.mins > 0 ? p.mins+' min' : 'do konce'}${p.reason?' · '+p.reason:''}</div></div></div>`).join('') : '<div class="empty">Žádné tresty</div>'}
+    </div>
+  </div>
+</div>
+
+${stats.length ? `<div class="section">
+  <div class="section-title">STATISTIKY HRÁČŮ</div>
+  ${stats.map(p => `<div class="stats-row">
+    <span class="stats-num">${p.goals+p.assists}</span>
+    <span class="stats-name">${p.name}</span>
+    <span class="stats-team">${p.team}</span>
+    <span class="stats-badge">${p.goals}G</span>
+    <span class="stats-badge">${p.assists}A</span>
+  </div>`).join('')}
+</div>` : ''}
+
+<div class="section">
+  <div class="section-title">SOUPISKA</div>
+  <div class="two-col">
+    <div>
+      <div class="col-label">${teamA}</div>
+      ${state.rosters.A.length ? state.rosters.A.map(p => `<div class="roster-row"><span class="roster-num">#${p.num||'?'}</span><span>${p.name}${p.cap?' ©':''}</span></div>`).join('') : '<div class="empty">Prázdná</div>'}
+    </div>
+    <div>
+      <div class="col-label">${teamB}</div>
+      ${state.rosters.B.length ? state.rosters.B.map(p => `<div class="roster-row"><span class="roster-num">#${p.num||'?'}</span><span>${p.name}${p.cap?' ©':''}</span></div>`).join('') : '<div class="empty">Prázdná</div>'}
+    </div>
+  </div>
+</div>
+
+<div class="footer">
+  <span>AXONO SYNC · ${currentMatchCode || '—'}</span>
+  <span>Vygenerováno ${new Date().toLocaleString('cs-CZ')}</span>
+</div>
+</body></html>`;
+
+  // Otevřít v novém okně s možností tisku / uložení jako PDF
+  const win = window.open('', '_blank', 'width=880,height=900');
+  win.document.write(`
+    ${html}
+    <div style="position:fixed;bottom:20px;right:20px;display:flex;gap:8px;z-index:999;">
+      <button onclick="window.print()" style="padding:10px 20px;background:#d10020;color:#fff;border:none;border-radius:8px;font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:2px;cursor:pointer;">🖨 TISK / PDF</button>
+      <button onclick="saveAsPng()" style="padding:10px 20px;background:#1a1a1a;color:#fff;border:none;border-radius:8px;font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:2px;cursor:pointer;">🖼 PNG</button>
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script>
+    async function saveAsPng() {
+      const btn = document.querySelector('div[style*="fixed"]');
+      btn.style.display = 'none';
+      const canvas = await html2canvas(document.body, { scale: 2, backgroundColor: '#fff', useCORS: true });
+      btn.style.display = 'flex';
+      const link = document.createElement('a');
+      link.download = 'zapas_${teamA.replace(/\s/g,'_')}_vs_${teamB.replace(/\s/g,'_')}.png';
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    }
+    window.onbeforeprint = () => document.querySelector('div[style*="fixed"]').style.display = 'none';
+    window.onafterprint = () => document.querySelector('div[style*="fixed"]').style.display = 'flex';
+    <\/script>
+  `);
+  win.document.close();
+  showToast('📄 Report otevřen');
 }
 
 // ─── RESET ────────────────────────────────────────────────────────────────────
