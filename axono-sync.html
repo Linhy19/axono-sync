@@ -39,15 +39,15 @@
   .app { position: relative; z-index: 1; max-width: 480px; margin: 0 auto; padding: 12px 14px 30px; }
 
   /* HEADER */
-  header { text-align: center; padding: 20px 0 6px; position: relative; }
-  .axono-logo { display: inline-block; margin-bottom: 2px; }
+  header { text-align: center; padding: 16px 0 4px; position: relative; }
+  .axono-logo { display: inline-block; margin-bottom: 0; }
   .axono-logo img { 
-    width: min(400px, 50vw); height: auto; display: block; margin: 0 auto; 
+    width: min(260px, 32vw); height: auto; display: block; margin: 0 auto; 
   }
   .sync-badge {
-    font-family: 'Bebas Neue', sans-serif; font-size: 14px;
-    letter-spacing: 5px; color: var(--dark); text-transform: uppercase;
-    margin-top: 2px; margin-bottom: 2px;
+    font-family: 'Bebas Neue', sans-serif; font-size: 20px;
+    letter-spacing: 8px; color: var(--dark); text-transform: uppercase;
+    margin-top: 1px; margin-bottom: 4px;
   }
   .game-subtitle {
     font-family: 'Inter', sans-serif; font-size: 10px;
@@ -1134,7 +1134,8 @@ async function renderMatchList() {
   const el = document.getElementById('matchList');
   el.innerHTML = '<div class="empty-msg" style="font-size:12px;">Načítám...</div>';
   try {
-    const { data } = await sb.from('matches').select('id,code,team_a_name,team_b_name,score_a,score_b,period,scheduled_at,created_at').order('scheduled_at', { ascending: false, nullsFirst: false }).order('created_at', { ascending: false });
+    const { data, error } = await sb.from('matches').select('id,code,team_a_name,team_b_name,score_a,score_b,period,scheduled_at,created_at').order('created_at', { ascending: false });
+    if (error) throw error;
     const matches = data || [];
     if (!matches.length) { el.innerHTML = '<div class="empty-msg" style="font-size:12px;">Žádné zápasy.</div>'; return; }
 
@@ -1152,7 +1153,7 @@ async function renderMatchList() {
       past.forEach(m => { html += matchItemHtml(m, true); });
     }
     el.innerHTML = html;
-  } catch(e) { el.innerHTML = '<div class="empty-msg" style="font-size:12px;">Chyba načítání.</div>'; }
+  } catch(e) { el.innerHTML = `<div class="empty-msg" style="font-size:12px;color:var(--red);">Chyba: ${e.message}</div>`; console.error('matchList:', e); }
 }
 
 function matchItemHtml(m, isPast) {
@@ -2026,6 +2027,8 @@ renderClock(); updateScoreboard(); setSyncDot('off');
 
 // Load teams into selectors
 loadTeams();
+// Load match list for sidebar (desktop always visible)
+renderMatchList();
 
 // Try to restore last match session
 // Pořadí: 1) URL parametr ?match=KOD  2) localStorage
@@ -2061,6 +2064,7 @@ loadTeams();
       newUrl.searchParams.set('match', code);
       window.history.replaceState({}, '', newUrl);
       showToast(`✅ Obnoven zápas: ${code}`);
+      renderMatchList();
     }
   } catch(e) { console.warn('Auto-restore failed:', e); }
 })();
