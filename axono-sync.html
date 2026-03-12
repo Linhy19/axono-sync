@@ -886,6 +886,7 @@ function adjustScore(team, delta) {
   else { state.teamB = Math.max(0, state.teamB + delta); bumpScore('scoreB'); }
   updateScoreboard();
   saveMatchState();
+  renderMatchList();
 }
 function bumpScore(id) {
   const el = document.getElementById(id);
@@ -1141,7 +1142,7 @@ function closeSidebar() {
 
 async function renderMatchList() {
   const el = document.getElementById('matchList');
-  el.innerHTML = '<div class="empty-msg" style="font-size:12px;">Načítám...</div>';
+  if (!el) return;
   try {
     const { data, error } = await sb.from('matches').select('id,code,team_a_name,team_b_name,score_a,score_b,period,scheduled_at,created_at').order('created_at', { ascending: false });
     if (error) throw error;
@@ -1426,6 +1427,9 @@ async function loadMatch(matchId, code) {
   if (liveBtn) liveBtn.style.display = 'block';
   localStorage.setItem('axono_last_match', JSON.stringify({ matchId, code }));
 
+  // Nejdřív zrušit starou realtime subscription — jinak může přepsat nový state
+  if (realtimeChannel) { sb.removeChannel(realtimeChannel); realtimeChannel = null; }
+
   // Reset local state — stopClockLocal nepíše do DB
   clearInterval(state.clock.interval);
   Object.assign(state, { teamA:0, teamB:0, period:1, goals:[], penalties:[], goalTeam:'A', penTeam:'A', rosterTeam:'A', goalId:0, penId:0, playerId:0, rosters:{A:[],B:[]}, clock:{seconds:1200,running:false,interval:null} });
@@ -1438,11 +1442,25 @@ async function loadMatch(matchId, code) {
     state.teamA = match.score_a;
     state.teamB = match.score_b;
     state.period = match.period;
-    document.getElementById('teamAName').value = match.team_a_name;
-    document.getElementById('teamBName').value = match.team_b_name;
+
+    // Nastavit jméno týmu — pokud option neexistuje, přidej ji dočasně
+    ['A','B'].forEach(t => {
+      const selId = t === 'A' ? 'teamAName' : 'teamBName';
+      const name = t === 'A' ? match.team_a_name : match.team_b_name;
+      const sel = document.getElementById(selId);
+      if (!sel) return;
+      // Pokud hodnota v selectu neexistuje, přidej ji
+      if (name && !Array.from(sel.options).some(o => o.value === name)) {
+        const opt = document.createElement('option');
+        opt.value = name; opt.textContent = name;
+        sel.appendChild(opt);
+      }
+      sel.value = name || (t === 'A' ? 'DOMÁCÍ' : 'HOSTÉ');
+    });
+
     document.getElementById('periodDisplay').textContent = PERIODS[state.period] || 'TŘETINA 1';
-    applyClockFromDb(match); // správně dopočítá čas i pokud hodiny běží
-    applyBreakFromDb(match); // obnoví přestávku pokud probíhá
+    applyClockFromDb(match);
+    applyBreakFromDb(match);
   }
 
   // Fetch goals
