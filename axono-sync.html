@@ -1123,9 +1123,8 @@ function copyMatchLink() {
 }
 
 function copyLiveLink() {
-  // Sestaví URL na axono-display.html se stejným kódem
-  const base = window.location.href.replace('axono-sync.html', 'axono-display.html').split('?')[0];
-  const url = base + '?match=' + currentMatchCode;
+  const base = window.location.origin + '/axono-display.html';
+  const url = base + '?kod=' + currentMatchCode;
   navigator.clipboard.writeText(url)
     .then(() => showToast('● LIVE odkaz zkopírován!'))
     .catch(() => { prompt('Zkopírujte LIVE odkaz:', url); });
