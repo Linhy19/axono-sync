@@ -1,0 +1,869 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AXONO ADMIN</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f5f5f5;
+    --surface: #ffffff;
+    --line: #e0e0e0;
+    --line2: #d0d0d0;
+    --red: #d10020;
+    --red-light: rgba(209,0,32,0.08);
+    --red-glow: rgba(209,0,32,0.22);
+    --dark: #1a1a1a;
+    --muted: #999;
+    --green: #00b248;
+    --warn: #e67e00;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--dark); min-height: 100vh; }
+
+  /* ── PIN SCREEN ── */
+  #pinScreen {
+    position: fixed; inset: 0; background: var(--bg);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 16px; z-index: 1000; padding: 24px;
+  }
+  #pinScreen.hidden { display: none; }
+  .pin-logo img { width: min(280px, 50vw); height: auto; }
+  .pin-badge { font-family: 'Bebas Neue', sans-serif; font-size: 14px; letter-spacing: 5px; color: var(--red); }
+  .pin-box {
+    background: var(--surface); border: 1.5px solid var(--line);
+    border-radius: 18px; padding: 24px; width: 100%; max-width: 320px;
+    display: flex; flex-direction: column; gap: 12px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+  }
+  .pin-label { font-family: 'Bebas Neue', sans-serif; font-size: 11px; letter-spacing: 3px; color: var(--muted); text-align: center; }
+  .pin-input {
+    background: var(--bg); border: 1.5px solid var(--line); border-radius: 10px;
+    color: var(--dark); font-family: 'Bebas Neue', sans-serif; font-size: 32px;
+    letter-spacing: 8px; text-align: center; padding: 14px; outline: none; width: 100%;
+    transition: border-color 0.2s;
+  }
+  .pin-input:focus { border-color: var(--red); }
+  .pin-btn {
+    background: var(--red); border: none; border-radius: 10px; color: #fff;
+    font-family: 'Bebas Neue', sans-serif; font-size: 16px; letter-spacing: 3px;
+    padding: 14px; cursor: pointer; box-shadow: 0 4px 16px var(--red-glow);
+    transition: filter 0.15s;
+  }
+  .pin-btn:hover { filter: brightness(1.08); }
+  .pin-error { font-size: 12px; color: var(--red); text-align: center; display: none; }
+
+  /* ── MAIN LAYOUT ── */
+  #adminApp { display: none; min-height: 100vh; }
+  #adminApp.visible { display: flex; flex-direction: column; }
+
+  /* HEADER */
+  .a-header {
+    background: var(--dark); color: #fff;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 24px; gap: 16px; flex-shrink: 0;
+    box-shadow: 0 2px 16px rgba(0,0,0,0.15);
+  }
+  .a-header-left { display: flex; align-items: center; gap: 14px; }
+  .a-logo img { height: 28px; width: auto; filter: invert(1); }
+  .a-logo-text { font-family: 'Bebas Neue', sans-serif; font-size: 22px; letter-spacing: 4px; }
+  .a-badge { font-family: 'Bebas Neue', sans-serif; font-size: 11px; letter-spacing: 3px; color: var(--red); border: 1px solid var(--red); border-radius: 4px; padding: 2px 7px; }
+  .a-header-links { display: flex; gap: 8px; }
+  .a-link-btn {
+    padding: 7px 14px; border-radius: 7px; border: 1px solid rgba(255,255,255,0.2);
+    color: rgba(255,255,255,0.7); font-family: 'Bebas Neue', sans-serif; font-size: 12px;
+    letter-spacing: 2px; cursor: pointer; background: transparent; text-decoration: none;
+    display: inline-flex; align-items: center; gap: 6px; transition: all 0.15s;
+  }
+  .a-link-btn:hover { background: rgba(255,255,255,0.1); color: #fff; }
+  .a-logout { background: none; border: none; color: rgba(255,255,255,0.4); font-size: 12px; cursor: pointer; font-family: 'Inter', sans-serif; letter-spacing: 1px; padding: 6px 10px; border-radius: 6px; transition: all 0.15s; }
+  .a-logout:hover { color: #fff; background: rgba(255,255,255,0.08); }
+
+  /* NAV TABS */
+  .a-nav {
+    background: var(--surface); border-bottom: 1.5px solid var(--line);
+    display: flex; gap: 0; overflow-x: auto; flex-shrink: 0;
+    padding: 0 24px;
+  }
+  .a-nav::-webkit-scrollbar { display: none; }
+  .a-nav-tab {
+    padding: 14px 20px; background: none; border: none;
+    font-family: 'Bebas Neue', sans-serif; font-size: 13px; letter-spacing: 3px;
+    color: var(--muted); cursor: pointer; border-bottom: 3px solid transparent;
+    transition: all 0.15s; white-space: nowrap;
+  }
+  .a-nav-tab.active { color: var(--red); border-bottom-color: var(--red); }
+  .a-nav-tab:hover:not(.active) { color: var(--dark); }
+
+  /* CONTENT */
+  .a-content { flex: 1; padding: 24px; max-width: 1100px; margin: 0 auto; width: 100%; }
+  .a-tab-panel { display: none; }
+  .a-tab-panel.active { display: block; }
+
+  /* CARDS & FORMS */
+  .a-card {
+    background: var(--surface); border: 1.5px solid var(--line);
+    border-radius: 16px; padding: 20px; margin-bottom: 16px;
+    box-shadow: 0 1px 8px rgba(0,0,0,0.05);
+  }
+  .a-card-title {
+    font-family: 'Bebas Neue', sans-serif; font-size: 15px; letter-spacing: 3px;
+    color: var(--red); margin-bottom: 16px; padding-bottom: 10px;
+    border-bottom: 1.5px solid var(--line);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .a-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 640px) { .a-grid { grid-template-columns: 1fr; } }
+  .a-form { display: flex; flex-direction: column; gap: 10px; }
+  .a-field {
+    width: 100%; padding: 10px 13px; border: 1.5px solid var(--line);
+    border-radius: 9px; font-family: 'Inter', sans-serif; font-size: 14px;
+    background: var(--bg); color: var(--dark); outline: none; transition: border-color 0.2s;
+  }
+  .a-field:focus { border-color: var(--red); background: #fff; }
+  .a-field-row { display: flex; gap: 8px; }
+  .a-label { font-size: 11px; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 3px; }
+  .a-btn {
+    padding: 10px 18px; border-radius: 9px; border: none; cursor: pointer;
+    font-family: 'Bebas Neue', sans-serif; font-size: 13px; letter-spacing: 2px;
+    transition: all 0.15s; white-space: nowrap;
+  }
+  .a-btn.primary { background: var(--red); color: #fff; box-shadow: 0 3px 10px var(--red-glow); }
+  .a-btn.secondary { background: var(--bg); color: var(--dark); border: 1.5px solid var(--line); }
+  .a-btn.danger { background: transparent; color: var(--red); border: 1.5px solid rgba(209,0,32,0.3); }
+  .a-btn.small { padding: 6px 12px; font-size: 11px; }
+  .a-btn:hover { filter: brightness(1.08); }
+  .a-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* TABLE */
+  .a-table { width: 100%; border-collapse: collapse; }
+  .a-table th {
+    font-family: 'Bebas Neue', sans-serif; font-size: 11px; letter-spacing: 2px;
+    color: var(--muted); text-align: left; padding: 8px 12px;
+    border-bottom: 1.5px solid var(--line); white-space: nowrap;
+  }
+  .a-table td { padding: 10px 12px; border-bottom: 1px solid var(--line); font-size: 13px; vertical-align: middle; }
+  .a-table tr:last-child td { border-bottom: none; }
+  .a-table tr:hover td { background: var(--bg); }
+  .a-table .td-actions { display: flex; gap: 6px; justify-content: flex-end; }
+  .a-badge-past { font-size: 10px; padding: 2px 6px; border-radius: 4px; background: var(--bg); color: var(--muted); border: 1px solid var(--line); font-family: 'Inter', sans-serif; font-weight: 600; }
+  .a-badge-upcoming { font-size: 10px; padding: 2px 6px; border-radius: 4px; background: rgba(0,178,72,0.1); color: var(--green); border: 1px solid rgba(0,178,72,0.2); font-family: 'Inter', sans-serif; font-weight: 600; }
+
+  /* TEAM COLOR SWATCH */
+  .color-swatch { width: 14px; height: 14px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+
+  /* MODAL */
+  .a-modal-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.4); z-index: 500;
+    align-items: center; justify-content: center; padding: 20px;
+  }
+  .a-modal-overlay.open { display: flex; }
+  .a-modal {
+    background: var(--surface); border-radius: 18px; padding: 24px;
+    width: 100%; max-width: 460px; max-height: 90vh; overflow-y: auto;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.15);
+    display: flex; flex-direction: column; gap: 14px;
+  }
+  .a-modal-title { font-family: 'Bebas Neue', sans-serif; font-size: 18px; letter-spacing: 3px; color: var(--dark); }
+  .a-modal-actions { display: flex; gap: 8px; margin-top: 4px; }
+  .a-modal-actions .a-btn { flex: 1; padding: 12px; font-size: 14px; }
+
+  /* TOAST */
+  .a-toast {
+    position: fixed; bottom: 24px; left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    background: var(--dark); color: #fff;
+    font-family: 'Bebas Neue', sans-serif; font-size: 15px; letter-spacing: 2px;
+    padding: 12px 24px; border-radius: 30px;
+    transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1);
+    z-index: 999; white-space: nowrap;
+  }
+  .a-toast.show { transform: translateX(-50%) translateY(0); }
+  .a-toast.ok { background: var(--green); }
+  .a-toast.err { background: var(--red); }
+
+  .empty-msg { text-align: center; color: var(--muted); font-size: 13px; padding: 28px; font-style: italic; }
+  .stat-row { display: flex; justify-content: space-between; padding: 7px 0; border-bottom: 1px solid var(--line); font-size: 13px; }
+  .stat-row:last-child { border-bottom: none; }
+  .stat-val { font-family: 'Bebas Neue', sans-serif; font-size: 18px; color: var(--red); }
+</style>
+</head>
+<body>
+
+<!-- PIN SCREEN -->
+<div id="pinScreen">
+  <div class="pin-logo">
+    <img src="/logo.png" alt="AXONO" onerror="this.outerHTML='<span style=\'font-family:Bebas Neue,sans-serif;font-size:36px;letter-spacing:6px;color:var(--dark)\'>AXONO</span>'">
+  </div>
+  <div class="pin-badge">ADMIN</div>
+  <div class="pin-box">
+    <div class="pin-label">ZADEJTE ADMIN PIN</div>
+    <input class="pin-input" type="password" id="pinInput" placeholder="••••" maxlength="10"
+      onkeydown="if(event.key==='Enter') verifyPin()" />
+    <button class="pin-btn" onclick="verifyPin()">VSTOUPIT</button>
+    <div class="pin-error" id="pinError">Nesprávný PIN</div>
+  </div>
+</div>
+
+<!-- ADMIN APP -->
+<div id="adminApp">
+  <header class="a-header">
+    <div class="a-header-left">
+      <div class="a-logo">
+        <img src="/logo.png" alt="AXONO" onerror="this.outerHTML='<span style=\'font-family:Bebas Neue,sans-serif;font-size:20px;letter-spacing:4px;color:#fff\'>AXONO</span>'">
+      </div>
+      <div class="a-badge">ADMIN</div>
+    </div>
+    <div class="a-header-links">
+      <a class="a-link-btn" href="/axono-sync.html" target="_blank">⚡ SYNC</a>
+      <a class="a-link-btn" href="/axono-display.html" target="_blank">● LIVE</a>
+      <button class="a-logout" onclick="logout()">odhlásit</button>
+    </div>
+  </header>
+
+  <nav class="a-nav">
+    <button class="a-nav-tab active" onclick="showTab('matches')">📅 ZÁPASY</button>
+    <button class="a-nav-tab" onclick="showTab('teams')">🏒 TÝMY</button>
+    <button class="a-nav-tab" onclick="showTab('players')">👤 HRÁČI</button>
+    <button class="a-nav-tab" onclick="showTab('settings')">⚙ NASTAVENÍ</button>
+  </nav>
+
+  <main class="a-content">
+
+    <!-- ── ZÁPASY ── -->
+    <div class="a-tab-panel active" id="panel-matches">
+      <div class="a-grid">
+        <div class="a-card">
+          <div class="a-card-title">NOVÝ ZÁPAS</div>
+          <div class="a-form">
+            <div>
+              <div class="a-label">Datum a čas</div>
+              <input class="a-field" type="datetime-local" id="mDate" />
+            </div>
+            <div>
+              <div class="a-label">Domácí tým</div>
+              <select class="a-field" id="mTeamA"><option value="">— vyberte —</option></select>
+            </div>
+            <div>
+              <div class="a-label">Hosté</div>
+              <select class="a-field" id="mTeamB"><option value="">— vyberte —</option></select>
+            </div>
+            <button class="a-btn primary" onclick="createMatch()">➕ VYTVOŘIT ZÁPAS</button>
+          </div>
+        </div>
+        <div class="a-card">
+          <div class="a-card-title">PŘEHLED</div>
+          <div id="matchStats"><div class="empty-msg">Načítám...</div></div>
+        </div>
+      </div>
+
+      <div class="a-card">
+        <div class="a-card-title">
+          VŠECHNY ZÁPASY
+          <button class="a-btn secondary small" onclick="loadMatches()">↺ obnovit</button>
+        </div>
+        <div style="overflow-x:auto;">
+          <table class="a-table">
+            <thead>
+              <tr>
+                <th>KÓD</th><th>DATUM</th><th>DOMÁCÍ</th><th>HOSTÉ</th><th>SKÓRE</th><th>TŘETINA</th><th></th>
+              </tr>
+            </thead>
+            <tbody id="matchesTable"><tr><td colspan="7" class="empty-msg">Načítám...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── TÝMY ── -->
+    <div class="a-tab-panel" id="panel-teams">
+      <div class="a-grid">
+        <div class="a-card">
+          <div class="a-card-title">PŘIDAT TÝM</div>
+          <div class="a-form">
+            <div>
+              <div class="a-label">Název týmu</div>
+              <input class="a-field" id="tName" placeholder="HC Axono Patriots" maxlength="40" />
+            </div>
+            <div class="a-field-row">
+              <div style="flex:1">
+                <div class="a-label">Zkratka</div>
+                <input class="a-field" id="tShort" placeholder="HBC" maxlength="8" />
+              </div>
+              <div>
+                <div class="a-label">Barva</div>
+                <input type="color" id="tColor" value="#d10020" style="width:46px;height:42px;border:1.5px solid var(--line);border-radius:9px;cursor:pointer;padding:3px;background:var(--bg);" />
+              </div>
+            </div>
+            <div>
+              <div class="a-label">Domácí aréna</div>
+              <input class="a-field" id="tArena" placeholder="Zimní stadion Axono" maxlength="60" />
+            </div>
+            <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);cursor:pointer;">
+              <input type="checkbox" id="tIsHome" style="accent-color:var(--red);width:15px;height:15px;" />
+              Náš tým (domácí) — načítá se automaticky
+            </label>
+            <button class="a-btn primary" onclick="addTeam()">➕ PŘIDAT TÝM</button>
+          </div>
+        </div>
+        <div class="a-card">
+          <div class="a-card-title">
+            TÝMY (<span id="teamCount">0</span>)
+            <button class="a-btn secondary small" onclick="loadTeams()">↺ obnovit</button>
+          </div>
+          <div id="teamsList"><div class="empty-msg">Načítám...</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── HRÁČI ── -->
+    <div class="a-tab-panel" id="panel-players">
+      <div class="a-grid">
+        <div class="a-card">
+          <div class="a-card-title">PŘIDAT HRÁČE</div>
+          <div class="a-form">
+            <div>
+              <div class="a-label">Tým</div>
+              <select class="a-field" id="pTeam"><option value="">— vyberte tým —</option></select>
+            </div>
+            <div class="a-field-row">
+              <div style="max-width:80px;">
+                <div class="a-label">Číslo</div>
+                <input class="a-field" id="pNum" type="number" min="1" max="99" placeholder="#" />
+              </div>
+              <div style="flex:1;">
+                <div class="a-label">Jméno</div>
+                <input class="a-field" id="pName" placeholder="Jan Novák" maxlength="40" />
+              </div>
+            </div>
+            <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);cursor:pointer;">
+              <input type="checkbox" id="pCap" style="accent-color:var(--red);width:15px;height:15px;" />
+              Kapitán
+            </label>
+            <button class="a-btn primary" onclick="addPlayer()">➕ PŘIDAT HRÁČE</button>
+          </div>
+        </div>
+        <div class="a-card">
+          <div class="a-card-title">FILTR TÝMU</div>
+          <select class="a-field" id="pFilterTeam" onchange="loadPlayers()" style="margin-bottom:12px;">
+            <option value="">Všechny týmy</option>
+          </select>
+          <div id="playersList"><div class="empty-msg">Vyberte tým.</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── NASTAVENÍ ── -->
+    <div class="a-tab-panel" id="panel-settings">
+      <div class="a-card" style="max-width:440px;">
+        <div class="a-card-title">ADMIN PIN</div>
+        <div class="a-form">
+          <div>
+            <div class="a-label">Nový PIN</div>
+            <input class="a-field" type="password" id="newPin" placeholder="min. 4 znaky" maxlength="20" />
+          </div>
+          <div>
+            <div class="a-label">Potvrdit PIN</div>
+            <input class="a-field" type="password" id="newPinConfirm" placeholder="zopakujte PIN" maxlength="20" />
+          </div>
+          <button class="a-btn primary" onclick="changePin()">💾 ULOŽIT PIN</button>
+          <div id="pinChangeMsg" style="font-size:12px;color:var(--green);display:none;">✓ PIN byl změněn</div>
+        </div>
+      </div>
+      <div class="a-card" style="max-width:440px;">
+        <div class="a-card-title">INFORMACE</div>
+        <div style="font-size:13px;color:var(--muted);line-height:1.8;font-family:'Inter',sans-serif;">
+          <div class="stat-row"><span>Verze</span><span style="font-weight:600;color:var(--dark);">AXONO 1.0</span></div>
+          <div class="stat-row"><span>Databáze</span><span id="dbStatus" style="font-weight:600;">—</span></div>
+          <div class="stat-row"><span>Zápasů celkem</span><span id="totalMatches" class="stat-val">—</span></div>
+          <div class="stat-row"><span>Týmů</span><span id="totalTeams" class="stat-val">—</span></div>
+          <div class="stat-row"><span>Hráčů v soupisku</span><span id="totalPlayers" class="stat-val">—</span></div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- EDIT MATCH MODAL -->
+<div class="a-modal-overlay" id="editMatchModal">
+  <div class="a-modal">
+    <div class="a-modal-title">EDITOVAT ZÁPAS</div>
+    <input type="hidden" id="editMatchId" />
+    <div>
+      <div class="a-label">Datum a čas</div>
+      <input class="a-field" type="datetime-local" id="editMatchDate" />
+    </div>
+    <div>
+      <div class="a-label">Domácí tým</div>
+      <select class="a-field" id="editMatchTeamA"></select>
+    </div>
+    <div>
+      <div class="a-label">Hosté</div>
+      <select class="a-field" id="editMatchTeamB"></select>
+    </div>
+    <div class="a-field-row">
+      <div style="flex:1;">
+        <div class="a-label">Skóre domácí</div>
+        <input class="a-field" type="number" id="editScoreA" min="0" />
+      </div>
+      <div style="flex:1;">
+        <div class="a-label">Skóre hosté</div>
+        <input class="a-field" type="number" id="editScoreB" min="0" />
+      </div>
+    </div>
+    <div class="a-modal-actions">
+      <button class="a-btn secondary" onclick="closeModal('editMatchModal')">ZRUŠIT</button>
+      <button class="a-btn primary" onclick="saveEditMatch()">ULOŽIT</button>
+    </div>
+  </div>
+</div>
+
+<!-- EDIT TEAM MODAL -->
+<div class="a-modal-overlay" id="editTeamModal">
+  <div class="a-modal">
+    <div class="a-modal-title">EDITOVAT TÝM</div>
+    <input type="hidden" id="editTeamId" />
+    <div>
+      <div class="a-label">Název</div>
+      <input class="a-field" id="editTeamName" maxlength="40" />
+    </div>
+    <div class="a-field-row">
+      <div style="flex:1;">
+        <div class="a-label">Zkratka</div>
+        <input class="a-field" id="editTeamShort" maxlength="8" />
+      </div>
+      <div>
+        <div class="a-label">Barva</div>
+        <input type="color" id="editTeamColor" style="width:46px;height:42px;border:1.5px solid var(--line);border-radius:9px;cursor:pointer;padding:3px;background:var(--bg);" />
+      </div>
+    </div>
+    <div>
+      <div class="a-label">Domácí aréna</div>
+      <input class="a-field" id="editTeamArena" maxlength="60" />
+    </div>
+    <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);cursor:pointer;">
+      <input type="checkbox" id="editTeamIsHome" style="accent-color:var(--red);width:15px;height:15px;" />
+      Náš tým (domácí)
+    </label>
+    <div class="a-modal-actions">
+      <button class="a-btn secondary" onclick="closeModal('editTeamModal')">ZRUŠIT</button>
+      <button class="a-btn primary" onclick="saveEditTeam()">ULOŽIT</button>
+    </div>
+  </div>
+</div>
+
+<div class="a-toast" id="aToast"></div>
+
+<script src="/supabase.min.js"></script>
+<script>
+const SUPABASE_URL = 'https://wdwmjjbcphntymodnbub.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indkd21qamJjcGhudHltb2RuYnViIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMyMjk0NDQsImV4cCI6MjA4ODgwNTQ0NH0.5Er4or14JJZveXexxO7XCaRIhguZ3FHuLWDJbyzB0oU';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// ─── PIN ──────────────────────────────────────────────────────────────────────
+async function verifyPin() {
+  const input = document.getElementById('pinInput').value.trim();
+  if (!input) return;
+  try {
+    const { data } = await sb.from('settings').select('value').eq('key', 'admin_pin').single();
+    const correct = data?.value || '1234';
+    if (input === correct) {
+      sessionStorage.setItem('axono_admin', '1');
+      document.getElementById('pinScreen').classList.add('hidden');
+      document.getElementById('adminApp').classList.add('visible');
+      initAdmin();
+    } else {
+      const err = document.getElementById('pinError');
+      err.style.display = 'block';
+      document.getElementById('pinInput').value = '';
+      setTimeout(() => err.style.display = 'none', 2500);
+    }
+  } catch(e) {
+    toast('Chyba připojení k DB', 'err');
+  }
+}
+
+function logout() {
+  sessionStorage.removeItem('axono_admin');
+  document.getElementById('pinScreen').classList.remove('hidden');
+  document.getElementById('adminApp').classList.remove('visible');
+  document.getElementById('pinInput').value = '';
+}
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+async function initAdmin() {
+  await Promise.all([loadTeams(), loadMatches(), loadPlayers()]);
+  loadStats();
+}
+
+// ─── TABS ─────────────────────────────────────────────────────────────────────
+function showTab(name) {
+  document.querySelectorAll('.a-tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.a-nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('panel-' + name).classList.add('active');
+  event.currentTarget.classList.add('active');
+}
+
+// ─── TOAST ────────────────────────────────────────────────────────────────────
+let toastTimer;
+function toast(msg, type = '') {
+  const el = document.getElementById('aToast');
+  el.textContent = msg;
+  el.className = 'a-toast show' + (type ? ' ' + type : '');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2800);
+}
+
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open');
+}
+
+// ─── ZÁPASY ───────────────────────────────────────────────────────────────────
+let matchesCache = [];
+
+async function loadMatches() {
+  try {
+    const { data } = await sb.from('matches').select('*').order('scheduled_at', { ascending: false, nullsFirst: false }).order('created_at', { ascending: false });
+    matchesCache = data || [];
+    renderMatchesTable();
+    renderMatchStats();
+  } catch(e) { toast('Chyba načítání zápasů', 'err'); }
+}
+
+function renderMatchesTable() {
+  const tbody = document.getElementById('matchesTable');
+  if (!matchesCache.length) { tbody.innerHTML = '<tr><td colspan="7" class="empty-msg">Žádné zápasy.</td></tr>'; return; }
+  const now = new Date();
+  tbody.innerHTML = matchesCache.map(m => {
+    const hasDate = m.scheduled_at;
+    const isPast = !hasDate || new Date(m.scheduled_at) <= now;
+    const dateStr = hasDate
+      ? new Date(m.scheduled_at).toLocaleString('cs-CZ', { day:'numeric', month:'numeric', year:'2-digit', hour:'2-digit', minute:'2-digit' })
+      : '—';
+    const badge = isPast
+      ? `<span class="a-badge-past">ODEHRÁNO</span>`
+      : `<span class="a-badge-upcoming">PLÁNOVÁNO</span>`;
+    return `<tr>
+      <td><strong style="font-family:'Bebas Neue',sans-serif;letter-spacing:1px;">${m.code}</strong></td>
+      <td style="white-space:nowrap;">${dateStr} ${badge}</td>
+      <td>${esc(m.team_a_name||'—')}</td>
+      <td>${esc(m.team_b_name||'—')}</td>
+      <td style="font-family:'Bebas Neue',sans-serif;font-size:16px;">${m.score_a} : ${m.score_b}</td>
+      <td>${m.period <= 3 ? m.period+'. třetina' : m.period === 4 ? 'Prodl.' : 'Nájezdy'}</td>
+      <td>
+        <div class="td-actions">
+          <button class="a-btn secondary small" onclick="openEditMatch('${m.id}')">✎ edit</button>
+          <button class="a-btn danger small" onclick="copyLive('${m.code}')">● live</button>
+          <button class="a-btn danger small" onclick="deleteMatch('${m.id}','${m.code}')">🗑</button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function renderMatchStats() {
+  const now = new Date();
+  const total = matchesCache.length;
+  const upcoming = matchesCache.filter(m => m.scheduled_at && new Date(m.scheduled_at) > now).length;
+  const past = total - upcoming;
+  document.getElementById('matchStats').innerHTML = `
+    <div class="stat-row"><span>Celkem zápasů</span><span class="stat-val">${total}</span></div>
+    <div class="stat-row"><span>Odehráno</span><span class="stat-val">${past}</span></div>
+    <div class="stat-row"><span>Plánováno</span><span class="stat-val">${upcoming}</span></div>
+  `;
+}
+
+async function createMatch() {
+  const teamA = document.getElementById('mTeamA').value || 'DOMÁCÍ';
+  const teamB = document.getElementById('mTeamB').value || 'HOSTÉ';
+  const dateVal = document.getElementById('mDate').value;
+  const scheduledAt = dateVal ? new Date(dateVal).toISOString() : null;
+  const code = generateCode();
+  try {
+    const { error } = await sb.from('matches').insert({
+      code, team_a_name: teamA, team_b_name: teamB,
+      score_a: 0, score_b: 0, period: 1, clock_seconds: 1200,
+      scheduled_at: scheduledAt
+    });
+    if (error) throw error;
+    toast(`✅ Zápas ${code} vytvořen`, 'ok');
+    document.getElementById('mDate').value = '';
+    await loadMatches();
+  } catch(e) { toast('Chyba: ' + e.message, 'err'); }
+}
+
+function openEditMatch(id) {
+  const m = matchesCache.find(x => x.id === id);
+  if (!m) return;
+  document.getElementById('editMatchId').value = m.id;
+  document.getElementById('editScoreA').value = m.score_a;
+  document.getElementById('editScoreB').value = m.score_b;
+  if (m.scheduled_at) {
+    const d = new Date(m.scheduled_at);
+    d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+    document.getElementById('editMatchDate').value = d.toISOString().slice(0,16);
+  } else {
+    document.getElementById('editMatchDate').value = '';
+  }
+  // Populate selects
+  const teams = teamsCache;
+  ['editMatchTeamA','editMatchTeamB'].forEach((selId, i) => {
+    const sel = document.getElementById(selId);
+    sel.innerHTML = `<option value="${i===0?'DOMÁCÍ':'HOSTÉ'}">${i===0?'— Domácí —':'— Hosté —'}</option>`;
+    teams.forEach(t => { sel.innerHTML += `<option value="${t.name}">${t.name}${t.short?' ('+t.short+')':''}</option>`; });
+    sel.value = i === 0 ? m.team_a_name : m.team_b_name;
+  });
+  document.getElementById('editMatchModal').classList.add('open');
+}
+
+async function saveEditMatch() {
+  const id = document.getElementById('editMatchId').value;
+  const dateVal = document.getElementById('editMatchDate').value;
+  try {
+    await sb.from('matches').update({
+      team_a_name: document.getElementById('editMatchTeamA').value,
+      team_b_name: document.getElementById('editMatchTeamB').value,
+      score_a: parseInt(document.getElementById('editScoreA').value) || 0,
+      score_b: parseInt(document.getElementById('editScoreB').value) || 0,
+      scheduled_at: dateVal ? new Date(dateVal).toISOString() : null,
+      updated_at: new Date().toISOString()
+    }).eq('id', id);
+    toast('✅ Zápas uložen', 'ok');
+    closeModal('editMatchModal');
+    await loadMatches();
+  } catch(e) { toast('Chyba: ' + e.message, 'err'); }
+}
+
+async function deleteMatch(id, code) {
+  if (!confirm(`Smazat zápas ${code}? Smažou se i góly a tresty.`)) return;
+  await sb.from('matches').delete().eq('id', id);
+  toast(`🗑 Zápas ${code} smazán`);
+  await loadMatches();
+}
+
+function copyLive(code) {
+  const url = window.location.origin + '/axono-display.html?kod=' + code;
+  navigator.clipboard.writeText(url).then(() => toast('● LIVE odkaz zkopírován', 'ok')).catch(() => prompt('LIVE odkaz:', url));
+}
+
+// ─── TÝMY ─────────────────────────────────────────────────────────────────────
+let teamsCache = [];
+
+async function loadTeams() {
+  try {
+    const { data } = await sb.from('teams').select('*').order('name');
+    teamsCache = data || [];
+    renderTeamsList();
+    populateTeamSelects();
+  } catch(e) { toast('Chyba načítání týmů', 'err'); }
+}
+
+function renderTeamsList() {
+  const el = document.getElementById('teamsList');
+  const active = teamsCache.filter(t => t.active);
+  const inactive = teamsCache.filter(t => !t.active);
+  document.getElementById('teamCount').textContent = active.length;
+  if (!teamsCache.length) { el.innerHTML = '<div class="empty-msg">Žádné týmy.</div>'; return; }
+  el.innerHTML = [...active, ...inactive].map(t => `
+    <div style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:9px;border:1.5px solid var(--line);margin-bottom:5px;background:${t.active?'var(--bg)':'rgba(0,0,0,0.03)'};opacity:${t.active?1:0.5};">
+      <span class="color-swatch" style="background:${t.color||'#ccc'};"></span>
+      <div style="flex:1;min-width:0;">
+        <div style="font-weight:600;font-size:13px;">${esc(t.name)}${t.short?' <span style="color:var(--muted);font-weight:400;">('+esc(t.short)+')</span>':''}</div>
+        ${t.arena ? `<div style="font-size:11px;color:var(--muted);">📍 ${esc(t.arena)}</div>` : ''}
+        ${t.is_home ? `<div style="font-size:10px;color:var(--green);font-weight:600;">✓ NÁŠ TÝM</div>` : ''}
+      </div>
+      <div style="display:flex;gap:4px;">
+        <button class="a-btn secondary small" onclick="openEditTeam('${t.id}')">✎</button>
+        ${t.active
+          ? `<button class="a-btn danger small" onclick="toggleTeam('${t.id}',false,'${esc(t.name)}')">🗑</button>`
+          : `<button class="a-btn secondary small" onclick="toggleTeam('${t.id}',true,'${esc(t.name)}')">↺</button>`}
+      </div>
+    </div>
+  `).join('');
+}
+
+function populateTeamSelects() {
+  const ids = ['mTeamA','mTeamB','pTeam','pFilterTeam'];
+  ids.forEach(id => {
+    const sel = document.getElementById(id);
+    if (!sel) return;
+    const cur = sel.value;
+    const isFilter = id === 'pFilterTeam';
+    sel.innerHTML = `<option value="">${isFilter ? 'Všechny týmy' : '— vyberte —'}</option>`;
+    teamsCache.filter(t => t.active).forEach(t => {
+      sel.innerHTML += `<option value="${t.id}">${esc(t.name)}${t.short?' ('+t.short+')':''}</option>`;
+    });
+    if (cur) sel.value = cur;
+  });
+}
+
+async function addTeam() {
+  const name = document.getElementById('tName').value.trim();
+  const short = document.getElementById('tShort').value.trim().toUpperCase();
+  const arena = document.getElementById('tArena').value.trim();
+  const color = document.getElementById('tColor').value;
+  const isHome = document.getElementById('tIsHome').checked;
+  if (!name) { toast('Zadejte název týmu', 'err'); return; }
+  try {
+    const { error } = await sb.from('teams').insert({ name, short: short||null, arena: arena||null, color, is_home: isHome, active: true });
+    if (error) throw error;
+    toast(`✅ Tým ${name} přidán`, 'ok');
+    document.getElementById('tName').value = '';
+    document.getElementById('tShort').value = '';
+    document.getElementById('tArena').value = '';
+    document.getElementById('tIsHome').checked = false;
+    await loadTeams();
+  } catch(e) { toast('Chyba: ' + e.message, 'err'); }
+}
+
+function openEditTeam(id) {
+  const t = teamsCache.find(x => x.id === id);
+  if (!t) return;
+  document.getElementById('editTeamId').value = t.id;
+  document.getElementById('editTeamName').value = t.name;
+  document.getElementById('editTeamShort').value = t.short || '';
+  document.getElementById('editTeamArena').value = t.arena || '';
+  document.getElementById('editTeamColor').value = t.color || '#d10020';
+  document.getElementById('editTeamIsHome').checked = !!t.is_home;
+  document.getElementById('editTeamModal').classList.add('open');
+}
+
+async function saveEditTeam() {
+  const id = document.getElementById('editTeamId').value;
+  const name = document.getElementById('editTeamName').value.trim();
+  if (!name) { toast('Zadejte název', 'err'); return; }
+  try {
+    await sb.from('teams').update({
+      name,
+      short: document.getElementById('editTeamShort').value.trim().toUpperCase() || null,
+      arena: document.getElementById('editTeamArena').value.trim() || null,
+      color: document.getElementById('editTeamColor').value,
+      is_home: document.getElementById('editTeamIsHome').checked
+    }).eq('id', id);
+    toast('✅ Tým uložen', 'ok');
+    closeModal('editTeamModal');
+    await loadTeams();
+  } catch(e) { toast('Chyba: ' + e.message, 'err'); }
+}
+
+async function toggleTeam(id, active, name) {
+  if (!active && !confirm(`Skrýt tým "${name}"? Bude stále v historii zápasů.`)) return;
+  await sb.from('teams').update({ active }).eq('id', id);
+  toast(active ? `✅ Tým ${name} obnoven` : `🗑 Tým ${name} skryt`);
+  await loadTeams();
+}
+
+// ─── HRÁČI ────────────────────────────────────────────────────────────────────
+let playersCache = [];
+
+async function loadPlayers() {
+  const teamId = document.getElementById('pFilterTeam')?.value || '';
+  try {
+    let q = sb.from('club_roster').select('*, teams(name)').order('num');
+    if (teamId) q = q.eq('team_id', teamId);
+    const { data } = await q;
+    playersCache = data || [];
+    renderPlayersList();
+  } catch(e) { toast('Chyba načítání hráčů', 'err'); }
+}
+
+function renderPlayersList() {
+  const el = document.getElementById('playersList');
+  if (!playersCache.length) { el.innerHTML = '<div class="empty-msg">Žádní hráči.</div>'; return; }
+  el.innerHTML = playersCache.map(p => `
+    <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:9px;border:1.5px solid var(--line);margin-bottom:4px;background:var(--bg);">
+      <span style="font-family:'Bebas Neue',sans-serif;font-size:16px;color:var(--red);min-width:28px;">#${p.num}</span>
+      <div style="flex:1;">
+        <div style="font-weight:600;font-size:13px;">${esc(p.name)}${p.cap?' 🅒':''}</div>
+        ${p.teams ? `<div style="font-size:10px;color:var(--muted);">${esc(p.teams.name)}</div>` : ''}
+      </div>
+      <button class="a-btn danger small" onclick="deletePlayer('${p.id}','${esc(p.name)}')">🗑</button>
+    </div>
+  `).join('');
+}
+
+async function addPlayer() {
+  const teamId = document.getElementById('pTeam').value;
+  const num = parseInt(document.getElementById('pNum').value);
+  const name = document.getElementById('pName').value.trim();
+  const cap = document.getElementById('pCap').checked;
+  if (!teamId) { toast('Vyberte tým', 'err'); return; }
+  if (!name) { toast('Zadejte jméno', 'err'); return; }
+  try {
+    const { error } = await sb.from('club_roster').insert({ team_id: teamId, num: num||0, name, cap });
+    if (error) throw error;
+    toast(`✅ ${name} přidán`, 'ok');
+    document.getElementById('pNum').value = '';
+    document.getElementById('pName').value = '';
+    document.getElementById('pCap').checked = false;
+    // sync filter
+    if (!document.getElementById('pFilterTeam').value) document.getElementById('pFilterTeam').value = teamId;
+    await loadPlayers();
+  } catch(e) { toast('Chyba: ' + e.message, 'err'); }
+}
+
+async function deletePlayer(id, name) {
+  if (!confirm(`Smazat hráče "${name}"?`)) return;
+  await sb.from('club_roster').delete().eq('id', id);
+  toast(`🗑 ${name} smazán`);
+  await loadPlayers();
+}
+
+// ─── NASTAVENÍ ────────────────────────────────────────────────────────────────
+async function changePin() {
+  const p1 = document.getElementById('newPin').value;
+  const p2 = document.getElementById('newPinConfirm').value;
+  if (!p1 || p1.length < 4) { toast('PIN musí mít min. 4 znaky', 'err'); return; }
+  if (p1 !== p2) { toast('PINy se neshodují', 'err'); return; }
+  try {
+    const { data } = await sb.from('settings').select('id').eq('key', 'admin_pin').single().catch(() => ({data:null}));
+    if (data) {
+      await sb.from('settings').update({ value: p1 }).eq('key', 'admin_pin');
+    } else {
+      await sb.from('settings').insert({ key: 'admin_pin', value: p1 });
+    }
+    document.getElementById('newPin').value = '';
+    document.getElementById('newPinConfirm').value = '';
+    const msg = document.getElementById('pinChangeMsg');
+    msg.style.display = 'block';
+    setTimeout(() => msg.style.display = 'none', 3000);
+    toast('✅ PIN změněn', 'ok');
+  } catch(e) { toast('Chyba: ' + e.message, 'err'); }
+}
+
+async function loadStats() {
+  try {
+    const [m, t, p] = await Promise.all([
+      sb.from('matches').select('id', { count: 'exact', head: true }),
+      sb.from('teams').select('id', { count: 'exact', head: true }).eq('active', true),
+      sb.from('club_roster').select('id', { count: 'exact', head: true })
+    ]);
+    document.getElementById('totalMatches').textContent = m.count ?? '—';
+    document.getElementById('totalTeams').textContent = t.count ?? '—';
+    document.getElementById('totalPlayers').textContent = p.count ?? '—';
+    document.getElementById('dbStatus').textContent = '✓ Připojeno';
+    document.getElementById('dbStatus').style.color = 'var(--green)';
+  } catch { document.getElementById('dbStatus').textContent = '✗ Chyba'; document.getElementById('dbStatus').style.color = 'var(--red)'; }
+}
+
+// ─── HELPERS ──────────────────────────────────────────────────────────────────
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function generateCode() {
+  const a = 'ABCDEFGHJKLMNPQRSTUVWXYZ', n = '23456789';
+  return Array.from({length:3}, () => a[Math.floor(Math.random()*a.length)]).join('') + '-' +
+         Array.from({length:3}, () => n[Math.floor(Math.random()*n.length)]).join('');
+}
+
+// ─── AUTO LOGIN ───────────────────────────────────────────────────────────────
+if (sessionStorage.getItem('axono_admin') === '1') {
+  document.getElementById('pinScreen').classList.add('hidden');
+  document.getElementById('adminApp').classList.add('visible');
+  initAdmin();
+}
+</script>
+</body>
+</html>

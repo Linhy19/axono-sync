@@ -40,18 +40,13 @@
 
   /* HEADER */
   header { text-align: center; padding: 20px 0 6px; position: relative; }
-  header::after {
-    content: ''; display: block; margin: 8px auto 0;
-    width: 48px; height: 3px; border-radius: 2px;
-    background: var(--red);
-  }
   .axono-logo { display: inline-block; margin-bottom: 2px; }
   .axono-logo img { 
     width: min(400px, 50vw); height: auto; display: block; margin: 0 auto; 
   }
   .sync-badge {
     font-family: 'Bebas Neue', sans-serif; font-size: 14px;
-    letter-spacing: 5px; color: var(--muted); text-transform: uppercase;
+    letter-spacing: 5px; color: var(--dark); text-transform: uppercase;
     margin-top: 2px; margin-bottom: 2px;
   }
   .game-subtitle {
@@ -649,109 +644,52 @@
 
   <!-- HRÁČI TAB -->
   <div class="section tab-content" id="tab-roster">
-    <div class="section-title" style="margin-bottom:10px;">Správa soupravy</div>
+    <div style="background:var(--bg);border:1.5px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:12px;display:flex;align-items:center;gap:10px;">
+      <span style="font-size:18px;">🔒</span>
+      <div style="font-size:12px;color:var(--muted);font-family:'Inter',sans-serif;line-height:1.5;">
+        Správa soupisek je v <strong style="color:var(--dark);">AXONO ADMIN</strong>. Zde můžeš soupisku jen načíst a zobrazit.<br>
+        <a href="/axono-admin.html" target="_blank" style="color:var(--red);font-weight:600;text-decoration:none;">Otevřít Admin →</a>
+      </div>
+    </div>
     <div class="form-stack">
       <div class="team-selector">
         <button class="team-opt active" id="rosterOptA" onclick="selectRosterTeam('A')">DOMÁCÍ</button>
         <button class="team-opt" id="rosterOptB" onclick="selectRosterTeam('B')">HOSTÉ</button>
       </div>
-
-      <!-- Import bar -->
-      <div id="importBar" style="display:flex;gap:7px;align-items:center;flex-wrap:wrap;">
-        <button onclick="loadDefaultRoster()" id="btnDefaultRoster"
-          style="flex:1;padding:9px 10px;border-radius:8px;border:1.5px dashed var(--red);background:var(--red-light);color:var(--red);font-family:'Bebas Neue',sans-serif;font-size:12px;letter-spacing:1px;cursor:pointer;transition:all 0.15s;"
-          title="Načíst trvalou soupisku klubu z databáze">
-          ⚡ NAČÍST SOUPISKU KLUBU
-        </button>
-        <label style="flex:1;padding:9px 10px;border-radius:8px;border:1.5px dashed var(--line2);background:var(--bg);color:var(--muted);font-family:'Bebas Neue',sans-serif;font-size:12px;letter-spacing:1px;cursor:pointer;text-align:center;transition:all 0.15s;"
-          title="Importovat soupisku ze souboru CSV nebo Excel">
-          📂 IMPORT CSV / EXCEL
-          <input type="file" id="rosterFileInput" accept=".csv,.xlsx,.xls" style="display:none;" onchange="importRosterFile(event)" />
-        </label>
-        <a id="csvTemplateLink" href="#" onclick="downloadCsvTemplate(event)"
-          style="flex:1;padding:9px 10px;border-radius:8px;border:1.5px dashed var(--line2);background:var(--bg);color:var(--muted);font-family:'Bebas Neue',sans-serif;font-size:12px;letter-spacing:1px;cursor:pointer;text-align:center;text-decoration:none;display:block;">
-          📄 VZOR CSV
-        </a>
-      </div>
-      <div id="importStatus" style="display:none;font-size:11px;color:var(--green);font-family:'Inter',sans-serif;font-weight:600;padding:4px 0;"></div>
-
-      <!-- Manual add -->
-      <div style="border-top:1px solid var(--line);padding-top:10px;margin-top:2px;">
-        <div style="font-size:10px;font-family:'Bebas Neue',sans-serif;letter-spacing:2px;color:var(--muted);margin-bottom:7px;">PŘIDAT RUČNĚ</div>
-        <div class="form-row">
-          <input class="field" id="playerNum" placeholder="#" type="number" min="1" max="99" style="max-width:60px;" />
-          <input class="field" id="playerName" placeholder="Jméno hráče" />
-        </div>
-        <label style="display:flex;align-items:center;gap:7px;font-size:12px;color:var(--muted);cursor:pointer;margin-top:6px;">
-          <input type="checkbox" id="playerCap" style="accent-color:var(--red);width:14px;height:14px;" />
-          Označit jako kapitána
-        </label>
-        <button class="submit-btn" style="margin-top:8px;" onclick="addPlayer()">➕ PŘIDAT HRÁČE</button>
-      </div>
+      <button onclick="loadDefaultRoster()" id="btnDefaultRoster"
+        style="width:100%;padding:9px 10px;border-radius:8px;border:1.5px dashed var(--red);background:var(--red-light);color:var(--red);font-family:'Bebas Neue',sans-serif;font-size:12px;letter-spacing:1px;cursor:pointer;"
+        title="Načíst soupisku z databáze">
+        ⚡ NAČÍST SOUPISKU KLUBU
+      </button>
     </div>
-
     <div class="roster-cols" id="rosterCols">
       <div>
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
           <div class="roster-col-title" id="rColTitleA">DOMÁCÍ</div>
-          <button onclick="clearRoster('A')" style="background:none;border:none;color:var(--muted);font-size:10px;cursor:pointer;font-family:'Inter',sans-serif;">vymazat</button>
         </div>
-        <div class="player-list" id="rosterA"><div class="empty-msg" style="padding:8px;font-size:11px;">Prázdná soupisku.</div></div>
+        <div class="player-list" id="rosterA"><div class="empty-msg" style="padding:8px;font-size:11px;">Prázdná soupiska.</div></div>
       </div>
       <div>
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
           <div class="roster-col-title" id="rColTitleB">HOSTÉ</div>
-          <button onclick="clearRoster('B')" style="background:none;border:none;color:var(--muted);font-size:10px;cursor:pointer;font-family:'Inter',sans-serif;">vymazat</button>
         </div>
-        <div class="player-list" id="rosterB"><div class="empty-msg" style="padding:8px;font-size:11px;">Prázdná soupisku.</div></div>
-      </div>
-    </div>
-
-    <!-- SPRÁVA TRVALÉ SOUPRAVY KLUBU -->
-    <div style="margin-top:14px;border-top:1px solid var(--line);padding-top:12px;">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;cursor:pointer;" onclick="toggleClubMgmt()">
-        <div style="font-family:'Bebas Neue',sans-serif;font-size:12px;letter-spacing:2px;color:var(--muted);">⚙ SPRÁVA SOUPRAVY KLUBU</div>
-        <span id="clubMgmtArrow" style="font-size:11px;color:var(--muted);">▼</span>
-      </div>
-      <div id="clubMgmtPanel" style="display:none;">
-        <div style="font-size:11px;color:var(--muted);font-family:'Inter',sans-serif;margin-bottom:10px;">
-          Hráči zde jsou uloženi trvale v databázi a automaticky se načtou do domácího týmu při každém novém zápasu.
-        </div>
-        <div id="clubRosterList" style="display:flex;flex-direction:column;gap:3px;margin-bottom:10px;max-height:200px;overflow-y:auto;">
-          <div class="empty-msg" style="padding:8px;font-size:11px;">Klikněte Obnovit pro načtení seznamu.</div>
-        </div>
-        <button onclick="refreshClubRosterPanel()"
-          style="width:100%;padding:8px;border-radius:7px;border:1.5px solid var(--line2);background:var(--bg);color:var(--muted);font-family:'Bebas Neue',sans-serif;font-size:11px;letter-spacing:1px;cursor:pointer;">
-          🔄 OBNOVIT SEZNAM
-        </button>
+        <div class="player-list" id="rosterB"><div class="empty-msg" style="padding:8px;font-size:11px;">Prázdná soupiska.</div></div>
       </div>
     </div>
   </div>
 
   <!-- TÝMY TAB -->
   <div class="section tab-content" id="tab-tymy">
+    <div style="background:var(--bg);border:1.5px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:14px;display:flex;align-items:center;gap:10px;">
+      <span style="font-size:18px;">🔒</span>
+      <div style="font-size:12px;color:var(--muted);font-family:'Inter',sans-serif;line-height:1.5;">
+        Přidávání a editace týmů je v <strong style="color:var(--dark);">AXONO ADMIN</strong>.<br>
+        <a href="/axono-admin.html" target="_blank" style="color:var(--red);font-weight:600;text-decoration:none;">Otevřít Admin →</a>
+      </div>
+    </div>
     <div class="section-header">
-      <div class="section-title">Správa týmů</div>
+      <div class="section-title">Týmy</div>
       <span style="font-size:10px;color:var(--muted);" id="teamCount"></span>
-    </div>
-    <div style="font-size:11px;color:var(--muted);font-family:'Inter',sans-serif;margin-bottom:12px;">
-      Týmy uložené zde se zobrazí ve výběru na skóre tabuli při každém zápasu.
-    </div>
-    <div class="form-stack" style="margin-bottom:14px;">
-      <div class="form-row">
-        <input class="field" id="newTeamName" placeholder="Název týmu (např. HC Axono)" maxlength="30" />
-        <input class="field" id="newTeamShort" placeholder="Zkratka" maxlength="8" style="max-width:90px;" />
-      </div>
-      <input class="field" id="newTeamArena" placeholder="Domácí aréna (např. Zimní stadion Axono)" maxlength="60" />
-      <div class="form-row" style="align-items:center;gap:10px;">
-        <label style="font-size:11px;color:var(--muted);font-family:'Inter',sans-serif;flex-shrink:0;">Barva:</label>
-        <input type="color" id="newTeamColor" value="#d10020" style="width:36px;height:36px;border:none;border-radius:6px;cursor:pointer;padding:2px;" />
-        <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);cursor:pointer;margin-left:4px;">
-          <input type="checkbox" id="newTeamIsHome" style="accent-color:var(--red);width:14px;height:14px;" />
-          Náš tým (domácí)
-        </label>
-      </div>
-      <button class="submit-btn" onclick="addTeam()">➕ PŘIDAT TÝM</button>
     </div>
     <div id="teamsList" style="display:flex;flex-direction:column;gap:5px;">
       <div class="empty-msg">Načítám týmy...</div>
@@ -1294,39 +1232,13 @@ async function confirmNewMatch() {
     await loadClubRoster('A', true);
     showToast(`✅ Zápas vytvořen: ${code}`);
     setSyncDot('ok');
+    openSidebar(); // ukáže nový zápas v seznamu
   } catch(e) {
     setSyncDot('error');
     showToast('❌ Chyba: ' + e.message);
   }
 }
 
-
-  if (hasActiveGame() && !confirm('Aktuální zápas bude ukončen. Vytvořit nový?')) return;
-  stopClock();
-  const code = generateMatchCode();
-  setSyncDot('saving');
-  try {
-    const { data, error } = await sb.from('matches').insert({
-      code,
-      team_a_name: 'DOMÁCÍ', team_b_name: 'HOSTÉ',
-      score_a: 0, score_b: 0, period: 1, clock_seconds: 1200
-    }).select().single();
-    if (error) throw error;
-    await loadMatch(data.id, code);
-    // Uložit kód do URL
-    const newUrl = new URL(window.location.href);
-    newUrl.searchParams.set('match', code);
-    window.history.replaceState({}, '', newUrl);
-    // Automaticky načíst soupisku klubu do domácího týmu
-    await loadClubRoster('A', true);
-    showToast(`✅ Zápas vytvořen: ${code}`, false);
-    setSyncDot('ok');
-  } catch(e) {
-    setSyncDot('error');
-    showToast('❌ Chyba: ' + e.message);
-    console.error(e);
-  }
-}
 
 function showJoinDialog() {
   document.getElementById('joinDialog').style.display = 'block';
