@@ -131,7 +131,7 @@
   }
   .a-btn.primary { background: var(--red); color: #fff; box-shadow: 0 3px 10px var(--red-glow); }
   .a-btn.secondary { background: var(--bg); color: var(--dark); border: 1.5px solid var(--line); }
-  .a-btn.danger { background: transparent; color: var(--red); border: 1.5px solid rgba(209,0,32,0.3); }
+  .a-btn.danger { background: var(--red); color: #fff; border: none; box-shadow: 0 2px 8px var(--red-glow); }
   .a-btn.small { padding: 6px 12px; font-size: 11px; }
   .a-btn:hover { filter: brightness(1.08); }
   .a-btn:disabled { opacity: 0.4; cursor: not-allowed; }
@@ -458,6 +458,36 @@
   </div>
 </div>
 
+<!-- EDIT PLAYER MODAL -->
+<div class="a-modal-overlay" id="editPlayerModal">
+  <div class="a-modal">
+    <div class="a-modal-title">EDITOVAT HRÁČE</div>
+    <input type="hidden" id="editPlayerId" />
+    <div>
+      <div class="a-label">Tým</div>
+      <select class="a-field" id="editPlayerTeam"><option value="">— bez týmu —</option></select>
+    </div>
+    <div class="a-field-row">
+      <div style="max-width:80px;">
+        <div class="a-label">Číslo</div>
+        <input class="a-field" id="editPlayerNum" type="text" placeholder="#" maxlength="3" />
+      </div>
+      <div style="flex:1;">
+        <div class="a-label">Jméno</div>
+        <input class="a-field" id="editPlayerName" maxlength="40" />
+      </div>
+    </div>
+    <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);cursor:pointer;">
+      <input type="checkbox" id="editPlayerCap" style="accent-color:var(--red);width:15px;height:15px;" />
+      Kapitán
+    </label>
+    <div class="a-modal-actions">
+      <button class="a-btn secondary" onclick="closeModal('editPlayerModal')">ZRUŠIT</button>
+      <button class="a-btn primary" onclick="saveEditPlayer()">ULOŽIT</button>
+    </div>
+  </div>
+</div>
+
 <div class="a-toast" id="aToast"></div>
 
 <script src="/supabase.min.js"></script>
@@ -565,8 +595,8 @@ function renderMatchesTable() {
       <td>
         <div class="td-actions">
           <button class="a-btn secondary small" onclick="openEditMatch('${m.id}')">✎ edit</button>
-          <button class="a-btn danger small" onclick="copyLive('${m.code}')">● live</button>
-          <button class="a-btn danger small" onclick="deleteMatch('${m.id}','${m.code}')">🗑</button>
+          <button class="a-btn secondary small" onclick="copyLive('${m.code}')" style="color:var(--green);border-color:rgba(0,178,72,0.3);">● live</button>
+          <button class="a-btn danger small" onclick="deleteMatch('${m.id}','${m.code}')">✕</button>
         </div>
       </td>
     </tr>`;
@@ -687,8 +717,8 @@ function renderTeamsList() {
       <div style="display:flex;gap:4px;">
         <button class="a-btn secondary small" onclick="openEditTeam('${t.id}')">✎</button>
         ${t.active
-          ? `<button class="a-btn danger small" onclick="toggleTeam('${t.id}',false,'${esc(t.name)}')">🗑</button>`
-          : `<button class="a-btn secondary small" onclick="toggleTeam('${t.id}',true,'${esc(t.name)}')">↺</button>`}
+          ? `<button class="a-btn danger small" onclick="toggleTeam('${t.id}',false,'${esc(t.name)}')">✕</button>`
+          : `<button class="a-btn secondary small" onclick="toggleTeam('${t.id}',true,'${esc(t.name)}')">↺ obnovit</button>`}
       </div>
     </div>
   `).join('');
@@ -796,7 +826,8 @@ function renderPlayersList() {
         <div style="font-weight:600;font-size:13px;">${esc(p.name)}${p.is_captain?' 🅒':''}</div>
         <div style="font-size:10px;color:var(--muted);">${team ? esc(team.name) : '—'}</div>
       </div>
-      <button class="a-btn danger small" onclick="deletePlayer('${p.id}','${esc(p.name)}')">🗑</button>
+      <button class="a-btn secondary small" onclick="openEditPlayer('${p.id}')">✎</button>
+      <button class="a-btn danger small" onclick="deletePlayer('${p.id}','${esc(p.name)}')">✕</button>
     </div>`;
   }).join('');
 }
@@ -829,8 +860,42 @@ async function addPlayer() {
 async function deletePlayer(id, name) {
   if (!confirm(`Smazat hráče "${name}"?`)) return;
   await sb.from('club_roster').delete().eq('id', id);
-  toast(`🗑 ${name} smazán`);
+  toast(`✕ ${name} smazán`);
   await loadPlayers();
+}
+
+function openEditPlayer(id) {
+  const p = playersCache.find(x => x.id === id);
+  if (!p) return;
+  document.getElementById('editPlayerId').value = p.id;
+  document.getElementById('editPlayerNum').value = p.num || '';
+  document.getElementById('editPlayerName').value = p.name;
+  document.getElementById('editPlayerCap').checked = !!p.is_captain;
+  // Populate team select
+  const sel = document.getElementById('editPlayerTeam');
+  sel.innerHTML = '<option value="">— bez týmu —</option>';
+  teamsCache.filter(t => t.active).forEach(t => {
+    sel.innerHTML += `<option value="${t.id}">${esc(t.name)}</option>`;
+  });
+  sel.value = p.team_id || '';
+  document.getElementById('editPlayerModal').classList.add('open');
+}
+
+async function saveEditPlayer() {
+  const id = document.getElementById('editPlayerId').value;
+  const name = document.getElementById('editPlayerName').value.trim();
+  if (!name) { toast('Zadejte jméno', 'err'); return; }
+  try {
+    await sb.from('club_roster').update({
+      num: document.getElementById('editPlayerNum').value.trim() || null,
+      name,
+      is_captain: document.getElementById('editPlayerCap').checked,
+      team_id: document.getElementById('editPlayerTeam').value || null
+    }).eq('id', id);
+    toast('✅ Hráč uložen', 'ok');
+    closeModal('editPlayerModal');
+    await loadPlayers();
+  } catch(e) { toast('Chyba: ' + e.message, 'err'); }
 }
 
 // ─── NASTAVENÍ ────────────────────────────────────────────────────────────────
