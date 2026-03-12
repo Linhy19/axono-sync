@@ -703,11 +703,10 @@ async function loadTeams() {
 function renderTeamsList() {
   const el = document.getElementById('teamsList');
   const active = teamsCache.filter(t => t.active);
-  const inactive = teamsCache.filter(t => !t.active);
   document.getElementById('teamCount').textContent = active.length;
-  if (!teamsCache.length) { el.innerHTML = '<div class="empty-msg">Žádné týmy.</div>'; return; }
-  el.innerHTML = [...active, ...inactive].map(t => `
-    <div style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:9px;border:1.5px solid var(--line);margin-bottom:5px;background:${t.active?'var(--bg)':'rgba(0,0,0,0.03)'};opacity:${t.active?1:0.5};">
+  if (!active.length) { el.innerHTML = '<div class="empty-msg">Žádné týmy.</div>'; return; }
+  el.innerHTML = active.map(t => `
+    <div style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:9px;border:1.5px solid var(--line);margin-bottom:5px;background:var(--bg);">
       <span class="color-swatch" style="background:${t.color||'#ccc'};"></span>
       <div style="flex:1;min-width:0;">
         <div style="font-weight:600;font-size:13px;">${esc(t.name)}${t.short?' <span style="color:var(--muted);font-weight:400;">('+esc(t.short)+')</span>':''}</div>
@@ -716,9 +715,7 @@ function renderTeamsList() {
       </div>
       <div style="display:flex;gap:4px;">
         <button class="a-btn secondary small" onclick="openEditTeam('${t.id}')">✎</button>
-        ${t.active
-          ? `<button class="a-btn danger small" onclick="toggleTeam('${t.id}',false,'${esc(t.name)}')">✕</button>`
-          : `<button class="a-btn secondary small" onclick="toggleTeam('${t.id}',true,'${esc(t.name)}')">↺ obnovit</button>`}
+        <button class="a-btn danger small" onclick="toggleTeam('${t.id}',false,'${esc(t.name)}')">✕</button>
       </div>
     </div>
   `).join('');
@@ -789,9 +786,14 @@ async function saveEditTeam() {
 }
 
 async function toggleTeam(id, active, name) {
-  if (!active && !confirm(`Skrýt tým "${name}"? Bude stále v historii zápasů.`)) return;
-  await sb.from('teams').update({ active }).eq('id', id);
-  toast(active ? `✅ Tým ${name} obnoven` : `🗑 Tým ${name} skryt`);
+  if (!active) {
+    if (!confirm(`Smazat tým "${name}" trvale? Tato akce nelze vrátit.`)) return;
+    await sb.from('teams').delete().eq('id', id);
+    toast(`✕ Tým ${name} smazán`);
+  } else {
+    await sb.from('teams').update({ active: true }).eq('id', id);
+    toast(`✅ Tým ${name} obnoven`);
+  }
   await loadTeams();
 }
 
