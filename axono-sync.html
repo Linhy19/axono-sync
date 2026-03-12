@@ -1296,33 +1296,6 @@ async function confirmNewMatch() {
 }
 
 
-  if (hasActiveGame() && !confirm('Aktuální zápas bude ukončen. Vytvořit nový?')) return;
-  stopClock();
-  const code = generateMatchCode();
-  setSyncDot('saving');
-  try {
-    const { data, error } = await sb.from('matches').insert({
-      code,
-      team_a_name: 'DOMÁCÍ', team_b_name: 'HOSTÉ',
-      score_a: 0, score_b: 0, period: 1, clock_seconds: 1200
-    }).select().single();
-    if (error) throw error;
-    await loadMatch(data.id, code);
-    // Uložit kód do URL
-    const newUrl = new URL(window.location.href);
-    newUrl.searchParams.set('match', code);
-    window.history.replaceState({}, '', newUrl);
-    // Automaticky načíst soupisku klubu do domácího týmu
-    await loadClubRoster('A', true);
-    showToast(`✅ Zápas vytvořen: ${code}`, false);
-    setSyncDot('ok');
-  } catch(e) {
-    setSyncDot('error');
-    showToast('❌ Chyba: ' + e.message);
-    console.error(e);
-  }
-}
-
 function showJoinDialog() {
   document.getElementById('joinDialog').style.display = 'block';
   document.getElementById('joinCodeInput').focus();
