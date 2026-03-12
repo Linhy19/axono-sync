@@ -320,9 +320,12 @@
 
     <!-- ── HRÁČI ── -->
     <div class="a-tab-panel" id="panel-players">
+      <div style="background:#fff8e1;border:1.5px solid #ffe082;border-radius:10px;padding:11px 14px;margin-bottom:14px;font-size:12px;color:#7a6000;font-family:'Inter',sans-serif;line-height:1.6;">
+        ℹ️ Toto je <strong>trvalá soupiska klubu</strong> (club_roster). Hráči se automaticky načtou do domácího týmu při novém zápase. Hráči přidaní přímo v SYNC jsou uloženi pouze pro daný zápas.
+      </div>
       <div class="a-grid">
         <div class="a-card">
-          <div class="a-card-title">PŘIDAT HRÁČE</div>
+          <div class="a-card-title">PŘIDAT HRÁČE DO SOUPRAVY</div>
           <div class="a-form">
             <div>
               <div class="a-label">Tým</div>
@@ -346,11 +349,11 @@
           </div>
         </div>
         <div class="a-card">
-          <div class="a-card-title">FILTR TÝMU</div>
+          <div class="a-card-title">SOUPISKA (<span id="playerCount">0</span>)</div>
           <select class="a-field" id="pFilterTeam" onchange="loadPlayers()" style="margin-bottom:12px;">
             <option value="">Všechny týmy</option>
           </select>
-          <div id="playersList"><div class="empty-msg">Vyberte tým.</div></div>
+          <div id="playersList"><div class="empty-msg">Načítám...</div></div>
         </div>
       </div>
     </div>
@@ -474,7 +477,7 @@ async function verifyPin() {
       sessionStorage.setItem('axono_admin', '1');
       document.getElementById('pinScreen').classList.add('hidden');
       document.getElementById('adminApp').classList.add('visible');
-      initAdmin();
+      initAdmin().then(restoreTabFromHash);
     } else {
       const err = document.getElementById('pinError');
       err.style.display = 'block';
@@ -500,11 +503,17 @@ async function initAdmin() {
 }
 
 // ─── TABS ─────────────────────────────────────────────────────────────────────
-function showTab(name) {
+function showTab(name, fromHash) {
   document.querySelectorAll('.a-tab-panel').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.a-nav-tab').forEach(t => t.classList.remove('active'));
-  document.getElementById('panel-' + name).classList.add('active');
-  event.currentTarget.classList.add('active');
+  const panel = document.getElementById('panel-' + name);
+  if (!panel) return;
+  panel.classList.add('active');
+  // Aktivovat správné tlačítko v nav
+  document.querySelectorAll('.a-nav-tab').forEach(t => {
+    if (t.getAttribute('onclick') && t.getAttribute('onclick').includes("'" + name + "'")) t.classList.add('active');
+  });
+  if (!fromHash) window.location.hash = name;
 }
 
 // ─── TOAST ────────────────────────────────────────────────────────────────────
@@ -761,13 +770,18 @@ let playersCache = [];
 
 async function loadPlayers() {
   const teamId = document.getElementById('pFilterTeam')?.value || '';
+  const el = document.getElementById('playersList');
+  if (el) el.innerHTML = '<div class="empty-msg">Načítám...</div>';
   try {
-    let q = sb.from('club_roster').select('*, teams(name)').order('num');
+    let q = sb.from('club_roster').select('id, num, name, cap, team_id, teams(name)').order('num');
     if (teamId) q = q.eq('team_id', teamId);
-    const { data } = await q;
+    const { data, error } = await q;
+    if (error) throw error;
     playersCache = data || [];
+    const cnt = document.getElementById('playerCount');
+    if (cnt) cnt.textContent = playersCache.length;
     renderPlayersList();
-  } catch(e) { toast('Chyba načítání hráčů', 'err'); }
+  } catch(e) { toast('Chyba načítání hráčů: ' + e.message, 'err'); }
 }
 
 function renderPlayersList() {
@@ -859,10 +873,22 @@ function generateCode() {
 }
 
 // ─── AUTO LOGIN ───────────────────────────────────────────────────────────────
+function restoreTabFromHash() {
+  const hash = window.location.hash.replace('#', '');
+  const valid = ['matches', 'teams', 'players', 'settings'];
+  if (valid.includes(hash)) showTab(hash, true);
+}
+
+window.addEventListener('hashchange', () => {
+  const hash = window.location.hash.replace('#', '');
+  const valid = ['matches', 'teams', 'players', 'settings'];
+  if (valid.includes(hash)) showTab(hash, true);
+});
+
 if (sessionStorage.getItem('axono_admin') === '1') {
   document.getElementById('pinScreen').classList.add('hidden');
   document.getElementById('adminApp').classList.add('visible');
-  initAdmin();
+  initAdmin().then(restoreTabFromHash);
 }
 </script>
 </body>
