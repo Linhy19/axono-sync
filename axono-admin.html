@@ -345,6 +345,10 @@
               <input type="checkbox" id="pCap" style="accent-color:var(--red);width:15px;height:15px;" />
               Kapitán
             </label>
+            <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);cursor:pointer;">
+              <input type="checkbox" id="pGoalie" style="accent-color:#1565c0;width:15px;height:15px;" />
+              Gólman
+            </label>
             <button class="a-btn primary" onclick="addPlayer()">➕ PŘIDAT HRÁČE</button>
           </div>
         </div>
@@ -480,6 +484,10 @@
     <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);cursor:pointer;">
       <input type="checkbox" id="editPlayerCap" style="accent-color:var(--red);width:15px;height:15px;" />
       Kapitán
+    </label>
+    <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);cursor:pointer;">
+      <input type="checkbox" id="editPlayerGoalie" style="accent-color:#1565c0;width:15px;height:15px;" />
+      Gólman
     </label>
     <div class="a-modal-actions">
       <button class="a-btn secondary" onclick="closeModal('editPlayerModal')">ZRUŠIT</button>
@@ -805,7 +813,7 @@ async function loadPlayers() {
   const el = document.getElementById('playersList');
   if (el) el.innerHTML = '<div class="empty-msg">Načítám...</div>';
   try {
-    const { data, error } = await sb.from('club_roster').select('id, num, name, is_captain, team_id').order('num');
+    const { data, error } = await sb.from('club_roster').select('id, num, name, is_captain, is_goalie, team_id').order('num');
     if (error) throw error;
     // Filtruj podle týmu pokud je vybrán
     playersCache = teamId ? (data||[]).filter(p => p.team_id === teamId) : (data||[]);
@@ -825,7 +833,7 @@ function renderPlayersList() {
     <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:9px;border:1.5px solid var(--line);margin-bottom:4px;background:var(--bg);">
       <span style="font-family:'Bebas Neue',sans-serif;font-size:16px;color:var(--red);min-width:28px;">#${p.num||'?'}</span>
       <div style="flex:1;">
-        <div style="font-weight:600;font-size:13px;">${esc(p.name)}${p.is_captain?' 🅒':''}</div>
+        <div style="font-weight:600;font-size:13px;">${esc(p.name)}${p.is_captain?' 🅒':''}${p.is_goalie?' 🥅':''}</div>
         <div style="font-size:10px;color:var(--muted);">${team ? esc(team.name) : '—'}</div>
       </div>
       <button class="a-btn secondary small" onclick="openEditPlayer('${p.id}')">✎</button>
@@ -839,12 +847,14 @@ async function addPlayer() {
   const num = document.getElementById('pNum').value.trim();
   const name = document.getElementById('pName').value.trim();
   const cap = document.getElementById('pCap').checked;
+  const goalie = document.getElementById('pGoalie').checked;
   if (!name) { toast('Zadejte jméno', 'err'); return; }
   try {
     const { error } = await sb.from('club_roster').insert({
       num: num || null,
       name,
       is_captain: cap,
+      is_goalie: goalie,
       team_id: teamId || null
     });
     if (error) throw error;
@@ -852,6 +862,7 @@ async function addPlayer() {
     document.getElementById('pNum').value = '';
     document.getElementById('pName').value = '';
     document.getElementById('pCap').checked = false;
+    document.getElementById('pGoalie').checked = false;
     if (teamId && !document.getElementById('pFilterTeam').value) {
       document.getElementById('pFilterTeam').value = teamId;
     }
@@ -873,6 +884,7 @@ function openEditPlayer(id) {
   document.getElementById('editPlayerNum').value = p.num || '';
   document.getElementById('editPlayerName').value = p.name;
   document.getElementById('editPlayerCap').checked = !!p.is_captain;
+  document.getElementById('editPlayerGoalie').checked = !!p.is_goalie;
   // Populate team select
   const sel = document.getElementById('editPlayerTeam');
   sel.innerHTML = '<option value="">— bez týmu —</option>';
@@ -892,6 +904,7 @@ async function saveEditPlayer() {
       num: document.getElementById('editPlayerNum').value.trim() || null,
       name,
       is_captain: document.getElementById('editPlayerCap').checked,
+      is_goalie: document.getElementById('editPlayerGoalie').checked,
       team_id: document.getElementById('editPlayerTeam').value || null
     }).eq('id', id);
     toast('✅ Hráč uložen', 'ok');
