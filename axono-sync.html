@@ -1591,8 +1591,8 @@ function populateTeamSelects() {
       og.label = 'Náš tým';
       home.forEach(t => {
         const o = document.createElement('option');
-        o.value = t.short || t.name;
-        o.textContent = t.name;
+        o.value = t.name;
+        o.textContent = t.name + (t.short ? ` (${t.short})` : '');
         o.dataset.color = t.color || '#d10020';
         o.dataset.id = t.id;
         og.appendChild(o);
@@ -1604,8 +1604,8 @@ function populateTeamSelects() {
       og.label = 'Soupeři';
       others.forEach(t => {
         const o = document.createElement('option');
-        o.value = t.short || t.name;
-        o.textContent = t.name;
+        o.value = t.name;
+        o.textContent = t.name + (t.short ? ` (${t.short})` : '');
         o.dataset.color = t.color || '#1a1a1a';
         o.dataset.id = t.id;
         og.appendChild(o);
