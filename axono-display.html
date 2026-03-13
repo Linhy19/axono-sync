@@ -647,15 +647,18 @@ function renderGoals() {
   const goals = [...state.goals].reverse();
   count.textContent = `${state.goals.length} gólů`;
   if (!goals.length) { el.innerHTML = '<div class="empty-msg">Čekáme na první gól...</div>'; return; }
-  el.innerHTML = goals.map(g => `
-    <div class="d-event${g.team === 'B' ? ' team-b' : ''}">
+  function fmtP(s) { if(!s) return {num:'',name:s||''}; const m=s.match(/^#(\S+)\s+(.*)/); return m?{num:'#'+m[1],name:m[2]}:{num:'',name:s}; }
+  el.innerHTML = goals.map(g => {
+    const sc=fmtP(g.scorer), as=g.assist?fmtP(g.assist):null;
+    return `<div class="d-event${g.team === 'B' ? ' team-b' : ''}">
       <div class="d-event-icon">🏒</div>
       <div class="d-event-info">
-        <div class="d-event-name">${esc(g.scorer)}</div>
-        <div class="d-event-sub">${g.assist ? 'As: ' + esc(g.assist) : ''}</div>
+        <div class="d-event-name">${sc.num?'<span style="color:var(--red);font-size:0.82em;font-weight:700;margin-right:4px;">'+esc(sc.num)+'</span>':''}${esc(sc.name)}</div>
+        <div class="d-event-sub">${as?'As: '+(as.num?'<span style="opacity:0.65;font-size:0.9em;">'+esc(as.num)+'</span> ':'')+esc(as.name):''}</div>
       </div>
-      <div class="d-event-meta">${esc(g.team_name || '')}<br>T${g.period} ${g.minute}'</div>
-    </div>`).join('');
+      <div class="d-event-meta">${esc(g.team_name||'')}<br>T${g.period} ${g.minute}'</div>
+    </div>`;
+  }).join('');
 }
 
 // ─── PENALTIES ────────────────────────────────────────────────────────────────
