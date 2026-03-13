@@ -475,7 +475,10 @@ async function connectToMatch() {
       errEl.style.display = 'block';
       return;
     }
-    localStorage.setItem('axono_display_match', JSON.stringify({ matchId: data.id, code: data.code }));
+    // Uložit kód do URL (ne localStorage) — čisté sdílení a přepínání
+    const newUrl = new URL(window.location.href);
+    newUrl.searchParams.set('kod', data.code);
+    window.history.replaceState({}, '', newUrl);
     await loadAndWatch(data.id, data.code);
   } catch(e) {
     errEl.textContent = '❌ Chyba připojení: ' + e.message;
@@ -777,22 +780,14 @@ function showToast(msg, isGoal = false) {
 // Zkusit obnovit poslední sledovaný zápas
 (async () => {
   try {
-    // Kód může být v URL parametru: axono-display.html?kod=ABC-234
+    // Připojit se pouze pokud je kód přímo v URL — žádný localStorage fallback
     const urlCode = new URLSearchParams(window.location.search).get('kod');
     if (urlCode) {
       document.getElementById('codeInput').value = urlCode;
       await connectToMatch();
-      return;
     }
-    const saved = localStorage.getItem('axono_display_match');
-    if (saved) {
-      const { matchId, code } = JSON.parse(saved);
-      if (matchId && code) {
-        document.getElementById('codeInput').value = code;
-        await loadAndWatch(matchId, code);
-      }
-    }
-  } catch(e) { console.warn('Auto-restore failed:', e); }
+    // Pokud URL neobsahuje kód, zobrazí se connect screen — uživatel zadá kód ručně
+  } catch(e) { console.warn('Auto-connect failed:', e); }
 })();
 </script>
 </body>

@@ -2276,15 +2276,7 @@ renderMatchList();
       if (data) matchId = data.id;
     }
 
-    if (!matchId) {
-      // Fallback na localStorage
-      const saved = localStorage.getItem('axono_last_match');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        matchId = parsed.matchId;
-        code = parsed.code;
-      }
-    }
+    // Bez URL kódu — nezkoušíme localStorage, uživatel je na čisté stránce
 
     if (matchId && code) {
       await loadMatch(matchId, code);
