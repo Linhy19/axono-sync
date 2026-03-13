@@ -965,7 +965,7 @@ function fillSelect(id, team, placeholder) {
   const el = document.getElementById(id); if(!el) return;
   const sorted = [...(state.rosters[team]||[])].sort((a,b)=>Number(a.num)-Number(b.num));
   el.innerHTML = `<option value="">${placeholder}</option>` +
-    sorted.map(p=>`<option value="${esc(p.name)}" data-num="${esc(p.num)}">#${esc(p.num)} ${esc(p.name)}</option>`).join('');
+    sorted.map(p=>`<option value="#${esc(p.num)} ${esc(p.name)}" data-num="${esc(p.num)}">#${esc(p.num)} ${esc(p.name)}</option>`).join('');
 }
 // Resolve player label: if number quick-input filled, find name from roster or use "#N"
 function resolvePlayer(numInputId, selectId, team) {

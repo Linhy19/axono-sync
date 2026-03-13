@@ -643,6 +643,13 @@ function tickPenalties() {
   renderPenBadges();
 }
 
+// ─── HELPERS ──────────────────────────────────────────────────────────────────
+function fmtP(s) {
+  if (!s) return { num: '', name: '' };
+  const m = s.match(/^(#\S+)\s+(.*)/);
+  return m ? { num: m[1], name: m[2] } : { num: '', name: s };
+}
+
 // ─── GOALS ────────────────────────────────────────────────────────────────────
 function renderGoals() {
   const el = document.getElementById('dGoalFeed');
@@ -650,16 +657,15 @@ function renderGoals() {
   const goals = [...state.goals].reverse();
   count.textContent = `${state.goals.length} gólů`;
   if (!goals.length) { el.innerHTML = '<div class="empty-msg">Čekáme na první gól...</div>'; return; }
-  function fmtP(s) { if(!s) return {num:'',name:s||''}; const m=s.match(/^#(\S+)\s+(.*)/); return m?{num:'#'+m[1],name:m[2]}:{num:'',name:s}; }
   el.innerHTML = goals.map(g => {
-    const sc=fmtP(g.scorer), as=g.assist?fmtP(g.assist):null;
+    const sc = fmtP(g.scorer), as = g.assist ? fmtP(g.assist) : null;
     return `<div class="d-event${g.team === 'B' ? ' team-b' : ''}">
       <div class="d-event-icon">🏒</div>
       <div class="d-event-info">
-        <div class="d-event-name">${sc.num?'<span style="color:var(--red);font-size:0.82em;font-weight:700;margin-right:4px;">'+esc(sc.num)+'</span>':''}${esc(sc.name)}</div>
-        <div class="d-event-sub">${as?'As: '+(as.num?'<span style="opacity:0.65;font-size:0.9em;">'+esc(as.num)+'</span> ':'')+esc(as.name):''}</div>
+        <div class="d-event-name">${sc.num ? '<span style="color:var(--red);font-size:0.82em;font-weight:700;margin-right:5px;">' + esc(sc.num) + '</span>' : ''}${esc(sc.name)}</div>
+        <div class="d-event-sub">${as ? 'Asistence: ' + (as.num ? '<span style="opacity:0.7;font-size:0.9em;">' + esc(as.num) + '</span> ' : '') + esc(as.name) : ''}</div>
       </div>
-      <div class="d-event-meta">${esc(g.team_name||'')}<br>T${g.period} ${g.minute}'</div>
+      <div class="d-event-meta">${esc(g.team_name || '')}<br>T${g.period} ${g.minute}'</div>
     </div>`;
   }).join('');
 }
@@ -717,10 +723,12 @@ function renderStats() {
   });
   const sorted = Object.values(map).sort((a,b) => (b.goals+b.assists) - (a.goals+a.assists));
   if (!sorted.length) { el.innerHTML = '<div class="empty-msg">Statistiky se zobrazí po prvním gólu.</div>'; return; }
-  el.innerHTML = sorted.map(p => `
-    <div class="d-stat-row">
+  el.innerHTML = sorted.map(p => {
+    const fp = fmtP(p.name);
+    return `<div class="d-stat-row">
       <div>
-        <span class="d-stat-name">${esc(p.name)}</span>
+        ${fp.num ? '<span style="color:var(--red);font-size:0.82em;font-weight:700;margin-right:5px;">'+esc(fp.num)+'</span>' : ''}
+        <span class="d-stat-name">${esc(fp.name)}</span>
         <span class="d-stat-team">${esc(p.team||'')}</span>
       </div>
       <div class="d-stat-nums">
@@ -729,7 +737,8 @@ function renderStats() {
         <div class="d-stat-num"><div class="val">${p.goals+p.assists}</div><div class="lbl">Pts</div></div>
         <div class="d-stat-num"><div class="val" style="color:var(--warn)">${p.pens}</div><div class="lbl">TM</div></div>
       </div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 
 // ─── REALTIME ─────────────────────────────────────────────────────────────────
