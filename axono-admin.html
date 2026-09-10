@@ -241,7 +241,7 @@
     </div>
   </header>
 
-  <nav class="a-nav">
+  <nav class="a-nav" aria-label="Administrace">
     <button class="a-nav-tab active" onclick="showTab('matches')">📅 ZÁPASY</button>
     <button class="a-nav-tab" onclick="showTab('teams')">🏒 TÝMY</button>
     <button class="a-nav-tab" onclick="showTab('players')">👤 HRÁČI</button>
@@ -338,8 +338,9 @@
 
     <!-- ── HRÁČI ── -->
     <div class="a-tab-panel" id="panel-players">
-      <div style="background:#fff8e1;border:1.5px solid #ffe082;border-radius:10px;padding:11px 14px;margin-bottom:14px;font-size:12px;color:#7a6000;font-family:'Inter',sans-serif;line-height:1.6;">
-        ℹ️ Toto je <strong>trvalá soupiska klubu</strong> (club_roster). Hráči se automaticky načtou do domácího týmu při novém zápase. Hráči přidaní přímo v SYNC jsou uloženi pouze pro daný zápas.
+      <div class="a-info" style="background:#fff8e1;border:1.5px solid #ffe082;border-radius:10px;padding:11px 14px;margin-bottom:14px;font-size:12px;color:#7a6000;font-family:'Inter',sans-serif;line-height:1.6;">
+        <span class="inline-icon-text">ℹ️</span>
+        <span>Toto je <strong>trvalá soupiska klubu</strong> (club_roster). Hráči se automaticky načtou do domácího týmu při novém zápase. Hráči přidaní přímo v SYNC jsou uloženi pouze pro daný zápas.</span>
       </div>
       <div class="a-grid">
         <div class="a-card">
@@ -506,7 +507,7 @@
   </div>
 </div>
 
-<div class="a-toast" id="aToast"></div>
+<div class="a-toast" id="aToast" role="status" aria-live="polite"></div>
 
 <script src="/supabase.min.js"></script>
 <script src="/axono-config.js"></script>
@@ -629,13 +630,13 @@ function renderMatchesTable() {
       ? `<span class="a-badge-past">ODEHRÁNO</span>`
       : `<span class="a-badge-upcoming">PLÁNOVÁNO</span>`;
     return `<tr>
-      <td><strong style="font-family:'Bebas Neue',sans-serif;letter-spacing:1px;">${m.code}</strong></td>
-      <td style="white-space:nowrap;">${dateStr} ${badge}</td>
-      <td>${esc(m.team_a_name||'—')}</td>
-      <td>${esc(m.team_b_name||'—')}</td>
-      <td style="font-family:'Bebas Neue',sans-serif;font-size:16px;">${m.score_a} : ${m.score_b}</td>
-      <td>${m.period <= 3 ? m.period+'. třetina' : m.period === 4 ? 'Prodl.' : 'Nájezdy'}</td>
-      <td>
+      <td data-label="Kód"><strong style="font-family:'Bebas Neue',sans-serif;letter-spacing:1px;">${m.code}</strong></td>
+      <td data-label="Datum" style="white-space:nowrap;">${dateStr} ${badge}</td>
+      <td data-label="Domácí">${esc(m.team_a_name||'—')}</td>
+      <td data-label="Hosté">${esc(m.team_b_name||'—')}</td>
+      <td data-label="Skóre" style="font-family:'Bebas Neue',sans-serif;font-size:16px;">${m.score_a} : ${m.score_b}</td>
+      <td data-label="Část">${m.period <= 3 ? m.period+'. třetina' : m.period === 4 ? 'Prodl.' : 'Nájezdy'}</td>
+      <td data-label="Akce">
         <div class="td-actions">
           <button class="a-btn secondary small" onclick="openEditMatch('${m.id}')">✎ edit</button>
           <button class="a-btn secondary small" onclick="copyLive('${m.code}')" style="color:var(--green);border-color:rgba(0,178,72,0.3);">● live</button>
