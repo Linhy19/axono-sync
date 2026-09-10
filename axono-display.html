@@ -429,12 +429,10 @@
 
 <script src="/supabase.min.js"></script>
 <script src="/axono-config.js"></script>
+<script src="/axono-client.js"></script>
 <script>
 // ─── CONFIG ───────────────────────────────────────────────────────────────────
-const SUPABASE_URL = window.AXONO_CONFIG.supabaseUrl;
-const SUPABASE_KEY = window.AXONO_CONFIG.supabaseAnonKey;
-
-const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const sb = window.axonoSupabase;
 
 const PERIODS = ['','TŘETINA 1','TŘETINA 2','TŘETINA 3','PRODLOUŽENÍ','NÁJEZDY'];
 
@@ -456,7 +454,7 @@ async function connectToMatch() {
   errEl.style.display = 'none';
   if (!code) return;
 
-  if (SUPABASE_URL.includes('VASE-ID')) {
+  if (window.AXONO_CONFIG.supabaseUrl.includes('VASE-ID')) {
     errEl.textContent = '⚠️ Nejsou vyplněny přístupové údaje Supabase v souboru.';
     errEl.style.display = 'block';
     return;
