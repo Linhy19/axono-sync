@@ -751,13 +751,13 @@
 </div>
 <div class="toast" id="toast"></div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="/supabase.min.js"></script>
+<script src="/axono-config.js"></script>
 <script>
 
 // ─── SUPABASE CONFIG ─────────────────────────────────────────────────────────
-// 👉 Sem vložte vaše údaje ze Supabase (Project Settings → API)
-const SUPABASE_URL = 'https://wdwmjjbcphntymodnbub.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indkd21qamJjcGhudHltb2RuYnViIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMyMjk0NDQsImV4cCI6MjA4ODgwNTQ0NH0.5Er4or14JJZveXexxO7XCaRIhguZ3FHuLWDJbyzB0oU';
+const SUPABASE_URL = window.AXONO_CONFIG.supabaseUrl;
+const SUPABASE_KEY = window.AXONO_CONFIG.supabaseAnonKey;
 
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -782,7 +782,7 @@ let state = {
   goalTeam: 'A', penTeam: 'A', rosterTeam: 'A',
   goalId: 0, penId: 0, playerId: 0,
   rosters: { A: [], B: [] },
-  clock: { seconds: 20*60, running: false, interval: null }
+  clock: { seconds: 20*60, running: false, interval: null, startedAt: null, startSeconds: 20*60 }
 };
 const PERIODS = ['','TŘETINA 1','TŘETINA 2','TŘETINA 3','PRODLOUŽENÍ','NÁJEZDY'];
 
@@ -793,31 +793,53 @@ const PERIODS = ['','TŘETINA 1','TŘETINA 2','TŘETINA 3','PRODLOUŽENÍ','NÁJ
 
 function toggleClock() { state.clock.running ? stopClock() : startClock(); }
 
+function getClockSecondsNow() {
+  if (!state.clock.running || !state.clock.startedAt) return state.clock.seconds;
+  const elapsed = Math.floor((Date.now() - state.clock.startedAt) / 1000);
+  return Math.max(0, state.clock.startSeconds - elapsed);
+}
+
+function tickClock() {
+  const previous = state.clock.seconds;
+  state.clock.seconds = getClockSecondsNow();
+  renderClock();
+  const delta = Math.max(0, previous - state.clock.seconds);
+  if (delta) tickPenalties(delta);
+
+  if (state.clock.seconds === 0 && state.clock.running) {
+    stopClockLocal();
+    syncClockToDb();
+    showToast('⏱ Konec třetiny!');
+    startBreak(state.period);
+  }
+}
+
 function startClock() {
   if (state.clock.running) return;
+  if (state.clock.seconds <= 0) {
+    showToast('Čas je na 00:00 — nastavte další třetinu nebo časomíru resetujte.');
+    return;
+  }
   state.clock.running = true;
   state.clock.startedAt = Date.now();
+  state.clock.startSeconds = state.clock.seconds;
   document.getElementById('clockStartBtn').textContent = '⏸ PAUZA';
   document.getElementById('clockStartBtn').className = 'clock-btn stop';
-  state.clock.interval = setInterval(() => {
-    state.clock.seconds = Math.max(0, state.clock.seconds - 1);
-    renderClock();
-    tickPenalties();
-    if (state.clock.seconds === 0) {
-      stopClock();
-      syncClockToDb();
-      showToast('⏱ Konec třetiny!');
-      startBreak(state.period);
-    }
-  }, 1000);
+  tickClock();
+  if (state.clock.running) state.clock.interval = setInterval(tickClock, 250);
   syncClockToDb();
 }
 
 function stopClockLocal() {
+  if (state.clock.running) state.clock.seconds = getClockSecondsNow();
   state.clock.running = false;
   clearInterval(state.clock.interval);
+  state.clock.interval = null;
+  state.clock.startedAt = null;
+  state.clock.startSeconds = state.clock.seconds;
   document.getElementById('clockStartBtn').textContent = '▶ START';
   document.getElementById('clockStartBtn').className = 'clock-btn start';
+  renderClock();
 }
 
 function stopClock() {
@@ -826,8 +848,9 @@ function stopClock() {
 }
 
 function resetClock() {
-  stopClock();
+  stopClockLocal();
   state.clock.seconds = state.period >= 4 ? 5*60 : 20*60;
+  state.clock.startSeconds = state.clock.seconds;
   renderClock();
   syncClockToDb();
 }
@@ -842,14 +865,20 @@ function renderClock() {
 
 async function syncClockToDb() {
   if (!currentMatchId) return;
+  setSyncDot('saving');
   try {
-    await sb.from('matches').update({
-      clock_seconds: state.clock.seconds,
+    const { error } = await sb.from('matches').update({
+      clock_seconds: state.clock.running ? state.clock.startSeconds : state.clock.seconds,
       clock_running: state.clock.running,
-      clock_started_at: state.clock.running ? new Date().toISOString() : null,
+      clock_started_at: state.clock.running ? new Date(state.clock.startedAt).toISOString() : null,
       updated_at: new Date().toISOString()
     }).eq('id', currentMatchId);
-  } catch(e) { console.warn('Clock sync failed:', e); }
+    if (error) throw error;
+    setSyncDot('ok');
+  } catch(e) {
+    setSyncDot('error');
+    console.warn('Clock sync failed:', e);
+  }
 }
 
 // Aplikuje stav hodin přijatý z DB (pro druhé zařízení)
@@ -857,36 +886,40 @@ function applyClockFromDb(match) {
   // Zastavit lokální interval — bez zápisu do DB
   clearInterval(state.clock.interval);
   state.clock.running = false;
+  state.clock.interval = null;
   document.getElementById('clockStartBtn').textContent = '▶ START';
   document.getElementById('clockStartBtn').className = 'clock-btn start';
 
   if (match.clock_running && match.clock_started_at) {
     // Dopočítat aktuální čas: uložené sekundy mínus uplynulý čas od startu
-    const elapsed = Math.floor((Date.now() - new Date(match.clock_started_at).getTime()) / 1000);
-    const seconds = Math.max(0, match.clock_seconds - elapsed);
+    const startedAt = new Date(match.clock_started_at).getTime();
+    const startSeconds = Number(match.clock_seconds) || 0;
+    const elapsed = Math.floor((Date.now() - startedAt) / 1000);
+    const seconds = Math.max(0, startSeconds - elapsed);
     // Pokud čas doběhl mezitím, jen zobraz 0 — nespouštěj toast
     if (seconds === 0) {
       state.clock.seconds = 0;
+      state.clock.startedAt = null;
+      state.clock.startSeconds = 0;
       renderClock();
       return;
     }
     state.clock.seconds = seconds;
     state.clock.running = true;
+    state.clock.startedAt = startedAt;
+    state.clock.startSeconds = startSeconds;
     document.getElementById('clockStartBtn').textContent = '⏸ PAUZA';
     document.getElementById('clockStartBtn').className = 'clock-btn stop';
-    state.clock.interval = setInterval(() => {
-      state.clock.seconds = Math.max(0, state.clock.seconds - 1);
-      renderClock();
-      tickPenalties();
-      if (state.clock.seconds === 0) {
-        stopClockLocal();
-        showToast('⏱ Konec třetiny!');
-        startBreak(state.period);
-      }
-    }, 1000);
+    tickClock();
+    if (state.clock.running) state.clock.interval = setInterval(tickClock, 250);
   } else {
-    // Hodiny stojí — jen zobraz uložený čas, ale ne 0 pokud nebyl zápas spuštěn
-    state.clock.seconds = match.clock_seconds > 0 ? match.clock_seconds : (state.period >= 4 ? 5*60 : 20*60);
+    // Nula je platný stav po skončení třetiny a po obnovení stránky musí zůstat nulou.
+    const storedSeconds = Number(match.clock_seconds);
+    state.clock.seconds = Number.isFinite(storedSeconds) && storedSeconds >= 0
+      ? storedSeconds
+      : (state.period >= 4 ? 5*60 : 20*60);
+    state.clock.startedAt = null;
+    state.clock.startSeconds = state.clock.seconds;
   }
   renderClock();
 }
@@ -993,11 +1026,11 @@ function selectPenTeam(t) {
   document.getElementById('penOptB').classList.toggle('active', t==='B');
   fillSelect('penPlayerSelect', t, '— ze soupravy —');
 }
-function tickPenalties() {
+function tickPenalties(delta = 1) {
   let changed = false;
   state.penalties.forEach(p => {
     if (!p.expired && p.remaining > 0) {
-      p.remaining--;
+      p.remaining = Math.max(0, p.remaining - delta);
       if (p.remaining===0) { p.expired=true; showToast(`✅ Trest skončil: ${p.player}`); changed=true; }
     }
   });
@@ -1724,13 +1757,21 @@ async function saveMatchState() {
   if (!currentMatchId) return;
   setSyncDot('saving');
   try {
-    await sb.from('matches').update({
+    const update = {
       score_a: state.teamA, score_b: state.teamB,
-      period: state.period, clock_seconds: state.clock.seconds,
+      period: state.period,
       team_a_name: document.getElementById('teamAName').value || 'DOMÁCÍ',
       team_b_name: document.getElementById('teamBName').value || 'HOSTÉ',
       updated_at: new Date().toISOString()
-    }).eq('id', currentMatchId);
+    };
+    // Běžná změna skóre nebo názvu týmu nesmí za běhu posunout kotvu časomíry.
+    if (!state.clock.running) {
+      update.clock_seconds = state.clock.seconds;
+      update.clock_running = false;
+      update.clock_started_at = null;
+    }
+    const { error } = await sb.from('matches').update(update).eq('id', currentMatchId);
+    if (error) throw error;
     setSyncDot('ok');
     showSaveIndicator();
   } catch(e) { setSyncDot('error'); }
@@ -1838,6 +1879,7 @@ function changePeriod(d) {
   document.getElementById('periodDisplay').textContent = PERIODS[state.period];
   stopClockLocal();
   state.clock.seconds = state.period >= 4 ? 5*60 : 20*60;
+  state.clock.startSeconds = state.clock.seconds;
   renderClock();
   saveMatchState();
 }
