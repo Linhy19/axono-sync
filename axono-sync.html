@@ -36,7 +36,37 @@
       radial-gradient(ellipse 60% 30% at 50% 0%, rgba(209,0,32,0.05) 0%, transparent 60%);
     pointer-events: none; z-index: 0;
   }
-  .app { position: relative; z-index: 1; max-width: 480px; margin: 0 auto; padding: 12px 14px 30px; }
+  .app { display: none; position: relative; z-index: 1; max-width: 480px; margin: 0 auto; padding: 12px 14px 30px; }
+  .app.authenticated { display: block; }
+
+  .operator-login {
+    position: relative; z-index: 2; min-height: 100vh; padding: 24px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .operator-login.hidden { display: none; }
+  .operator-login-card {
+    width: 100%; max-width: 360px; background: var(--surface);
+    border: 1.5px solid var(--line); border-radius: 20px; padding: 26px;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.1);
+  }
+  .operator-login-logo { width: min(250px, 70vw); display: block; margin: 0 auto 4px; }
+  .operator-login-title {
+    font-family: 'Bebas Neue', sans-serif; color: var(--red); text-align: center;
+    font-size: 15px; letter-spacing: 5px; margin-bottom: 22px;
+  }
+  .operator-login-field {
+    width: 100%; padding: 13px 14px; margin-bottom: 10px; border: 1.5px solid var(--line);
+    border-radius: 10px; background: var(--bg); color: var(--dark); outline: none;
+    font-family: 'Inter', sans-serif; font-size: 14px;
+  }
+  .operator-login-field:focus { border-color: var(--red); background: #fff; }
+  .operator-login-btn {
+    width: 100%; padding: 13px; border: 0; border-radius: 10px; cursor: pointer;
+    background: var(--red); color: #fff; font-family: 'Bebas Neue', sans-serif;
+    font-size: 16px; letter-spacing: 3px; box-shadow: 0 4px 16px var(--red-glow);
+  }
+  .operator-login-btn:disabled { opacity: 0.6; cursor: wait; }
+  .operator-login-error { display: none; margin-top: 10px; color: var(--red); text-align: center; font-size: 13px; }
 
   /* HEADER */
   header { text-align: center; padding: 16px 0 4px; position: relative; }
@@ -455,6 +485,17 @@
 </style>
 </head>
 <body>
+<div class="operator-login" id="operatorLogin">
+  <div class="operator-login-card">
+    <img class="operator-login-logo" src="/logo.png" alt="AXONO">
+    <div class="operator-login-title">OVLÁDÁNÍ ZÁPASU</div>
+    <input class="operator-login-field" id="operatorEmail" type="email" placeholder="E-mail" autocomplete="username">
+    <input class="operator-login-field" id="operatorPassword" type="password" placeholder="Heslo" autocomplete="current-password"
+      onkeydown="if(event.key==='Enter') signInOperator()">
+    <button class="operator-login-btn" id="operatorLoginButton" onclick="signInOperator()">PŘIHLÁSIT</button>
+    <div class="operator-login-error" id="operatorLoginError">Přihlášení se nezdařilo.</div>
+  </div>
+</div>
 <div class="app">
 
   <!-- SIDEBAR OVERLAY -->
@@ -518,6 +559,7 @@
       <button id="copyLiveBtn" onclick="copyLiveLink()" style="display:none;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:7px;color:#4cff8f;font-family:'Bebas Neue',sans-serif;font-size:13px;letter-spacing:1px;padding:8px 14px;cursor:pointer;" title="Zkopírovat odkaz na LIVE stránku">● LIVE ODKAZ</button>
     </div>
     <div id="syncDot" style="width:8px;height:8px;border-radius:50%;background:#444;flex-shrink:0;" title="Stav připojení"></div>
+    <button onclick="logoutOperator()" style="background:transparent;border:0;color:#777;font-family:'Inter',sans-serif;font-size:11px;cursor:pointer;padding:5px;">odhlásit</button>
   </div>
 
   <!-- JOIN DIALOG -->
@@ -753,13 +795,73 @@
 
 <script src="/supabase.min.js"></script>
 <script src="/axono-config.js"></script>
+<script src="/axono-client.js"></script>
 <script>
 
 // ─── SUPABASE CONFIG ─────────────────────────────────────────────────────────
-const SUPABASE_URL = window.AXONO_CONFIG.supabaseUrl;
-const SUPABASE_KEY = window.AXONO_CONFIG.supabaseAnonKey;
+const sb = window.axonoSupabase;
 
-const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+// ─── AUTH ─────────────────────────────────────────────────────────────────────
+let operatorInitialized = false;
+
+async function signInOperator() {
+  const email = document.getElementById('operatorEmail').value.trim();
+  const password = document.getElementById('operatorPassword').value;
+  const button = document.getElementById('operatorLoginButton');
+  const errorEl = document.getElementById('operatorLoginError');
+  if (!email || !password) {
+    errorEl.textContent = 'Vyplňte e-mail a heslo.';
+    errorEl.style.display = 'block';
+    return;
+  }
+
+  button.disabled = true;
+  button.textContent = 'PŘIHLAŠUJI…';
+  errorEl.style.display = 'none';
+  try {
+    const session = await window.AxonoAuth.signIn(email, password);
+    await showOperatorApp(session);
+    document.getElementById('operatorPassword').value = '';
+  } catch(e) {
+    errorEl.textContent = 'Nesprávný e-mail nebo heslo.';
+    errorEl.style.display = 'block';
+  } finally {
+    button.disabled = false;
+    button.textContent = 'PŘIHLÁSIT';
+  }
+}
+
+async function showOperatorApp(session) {
+  if (!session) return showOperatorLogin();
+  document.getElementById('operatorLogin').classList.add('hidden');
+  document.querySelector('.app').classList.add('authenticated');
+  if (!operatorInitialized) {
+    operatorInitialized = true;
+    await initOperatorApp();
+  }
+}
+
+function showOperatorLogin() {
+  if (state.clock?.interval) clearInterval(state.clock.interval);
+  state.clock.running = false;
+  state.clock.interval = null;
+  if (realtimeChannel) {
+    sb.removeChannel(realtimeChannel);
+    realtimeChannel = null;
+  }
+  document.getElementById('operatorLogin').classList.remove('hidden');
+  document.querySelector('.app').classList.remove('authenticated');
+  operatorInitialized = false;
+}
+
+async function logoutOperator() {
+  if (state.clock.running) {
+    stopClockLocal();
+    await syncClockToDb();
+  }
+  try { await window.AxonoAuth.signOut(); }
+  finally { showOperatorLogin(); }
+}
 
 // ─── MATCH SESSION ────────────────────────────────────────────────────────────
 let currentMatchId = null;
@@ -2292,37 +2394,29 @@ async function restoreTeam(id) {
 }
 
 // ─── INIT ─────────────────────────────────────────────────────────────────────
-document.getElementById('penOptA').classList.add('active');
-document.getElementById('penOptB').classList.remove('active');
-renderClock(); updateScoreboard(); setSyncDot('off');
+async function initOperatorApp() {
+  document.getElementById('penOptA').classList.add('active');
+  document.getElementById('penOptB').classList.remove('active');
+  renderClock();
+  updateScoreboard();
+  setSyncDot('off');
+  await loadTeams();
+  await renderMatchList();
 
-// Load teams into selectors
-loadTeams();
-// Load match list for sidebar (desktop always visible)
-renderMatchList();
-
-// Try to restore last match session
-// Pořadí: 1) URL parametr ?match=KOD  2) localStorage
-(async () => {
+  // Obnovit zápas z URL parametru ?match=KOD.
   try {
-    // URL parametr má přednost — funguje vždy, i po refreshi na mobilu
     const urlParams = new URLSearchParams(window.location.search);
     const urlCode = urlParams.get('match');
-
     let matchId = null, code = null;
 
     if (urlCode) {
-      // Načíst zápas podle kódu z URL
       code = urlCode.toUpperCase();
       const { data } = await sb.from('matches').select('id, code').eq('code', code).single();
       if (data) matchId = data.id;
     }
 
-    // Bez URL kódu — nezkoušíme localStorage, uživatel je na čisté stránce
-
     if (matchId && code) {
       await loadMatch(matchId, code);
-      // Přidat kód do URL aby refresh vždy obnovil správný zápas
       const newUrl = new URL(window.location.href);
       newUrl.searchParams.set('match', code);
       window.history.replaceState({}, '', newUrl);
@@ -2330,7 +2424,16 @@ renderMatchList();
       renderMatchList();
     }
   } catch(e) { console.warn('Auto-restore failed:', e); }
-})();
+}
+
+window.AxonoAuth.getSession()
+  .then(showOperatorApp)
+  .catch(() => showOperatorLogin());
+
+window.AxonoAuth.onChange(session => {
+  if (session) showOperatorApp(session);
+  else showOperatorLogin();
+});
 </script>
 </body>
 </html>
