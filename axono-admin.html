@@ -205,6 +205,7 @@
   .stat-row:last-child { border-bottom: none; }
   .stat-val { font-family: 'Bebas Neue', sans-serif; font-size: 18px; color: var(--red); }
 </style>
+<link rel="stylesheet" href="/axono-ui.css">
 </head>
 <body>
 
@@ -510,6 +511,7 @@
 <script src="/supabase.min.js"></script>
 <script src="/axono-config.js"></script>
 <script src="/axono-client.js"></script>
+<script src="/axono-icons.js"></script>
 <script>
 const sb = window.axonoSupabase;
 
@@ -751,7 +753,7 @@ function renderTeamsList() {
       <span class="color-swatch" style="background:${t.color||'#ccc'};"></span>
       <div style="flex:1;min-width:0;">
         <div style="font-weight:600;font-size:13px;">${esc(t.name)}${t.short?' <span style="color:var(--muted);font-weight:400;">('+esc(t.short)+')</span>':''}</div>
-        ${t.arena ? `<div style="font-size:11px;color:var(--muted);">📍 ${esc(t.arena)}</div>` : ''}
+        ${t.arena ? `<div class="location-line" style="font-size:11px;color:var(--muted);">📍 ${esc(t.arena)}</div>` : ''}
         ${t.is_home ? `<div style="font-size:10px;color:var(--green);font-weight:600;">✓ NÁŠ TÝM</div>` : ''}
       </div>
       <div style="display:flex;gap:4px;">
@@ -866,7 +868,7 @@ function renderPlayersList() {
     <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:9px;border:1.5px solid var(--line);margin-bottom:4px;background:var(--bg);">
       <span style="font-family:'Bebas Neue',sans-serif;font-size:16px;color:var(--red);min-width:28px;">#${p.num||'?'}</span>
       <div style="flex:1;">
-        <div style="font-weight:600;font-size:13px;">${esc(p.name)}${p.is_captain?' 🅒':''}${p.is_goalie?' 🥅':''}</div>
+        <div style="font-weight:600;font-size:13px;display:flex;align-items:center;gap:6px;">${esc(p.name)}${p.is_captain?'<span class="role-badge">C</span>':''}${p.is_goalie?AxonoIcons.icon('goalie'):''}</div>
         <div style="font-size:10px;color:var(--muted);">${team ? esc(team.name) : '—'}</div>
       </div>
       <button class="a-btn secondary small" onclick="openEditPlayer('${p.id}')">✎</button>
