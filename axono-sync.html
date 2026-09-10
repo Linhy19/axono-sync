@@ -506,7 +506,7 @@
   <div class="sidebar" id="sidebar">
     <div class="sidebar-header">
       <div class="sidebar-title">ZÁPASY</div>
-      <button class="sidebar-close" onclick="closeSidebar()">✕</button>
+      <button class="sidebar-close" onclick="closeSidebar()" title="Zavřít seznam zápasů" aria-label="Zavřít seznam zápasů">✕</button>
     </div>
     <div class="sidebar-body">
       <button class="sidebar-new-btn" onclick="openNewMatchModal()">➕ NOVÝ ZÁPAS</button>
@@ -538,16 +538,16 @@
   </div>
 
   <header>
-    <button class="sidebar-open-btn" id="sidebarOpenBtn" onclick="openSidebar()" style="position:absolute;left:0;top:50%;transform:translateY(-50%);background:var(--bg);border:1.5px solid var(--line);border-radius:8px;padding:7px 11px;cursor:pointer;font-size:16px;color:var(--dark);">☰</button>
+    <button class="sidebar-open-btn" id="sidebarOpenBtn" onclick="openSidebar()" title="Otevřít seznam zápasů" aria-label="Otevřít seznam zápasů" style="position:absolute;left:0;top:50%;transform:translateY(-50%);background:var(--bg);border:1.5px solid var(--line);border-radius:8px;padding:7px 11px;cursor:pointer;font-size:16px;color:var(--dark);">☰</button>
     <div class="axono-logo">
       <img src="/logo.png" alt="AXONO" onerror="this.outerHTML='<span style=\'font-family:Bebas Neue,sans-serif;font-size:32px;letter-spacing:6px;color:var(--dark)\'>AXONO</span>'">
     </div>
     <div class="sync-badge">SYNC</div>
-    <div id="saveIndicator" style="opacity:0;transition:opacity 0.4s;font-size:10px;color:var(--green);font-family:'Inter',sans-serif;font-weight:600;letter-spacing:1px;margin-top:2px;">✓ uloženo</div>
+    <div id="saveIndicator" aria-live="polite" style="opacity:0;transition:opacity 0.4s;font-size:10px;color:var(--green);font-family:'Inter',sans-serif;font-weight:600;letter-spacing:1px;margin-top:2px;">✓ uloženo</div>
   </header>
 
   <!-- SESSION BAR -->
-  <div id="sessionBar" style="background:#1a1a1a;border-radius:12px;padding:12px 16px;margin:12px 0;display:flex;align-items:center;gap:10px;flex-wrap:wrap;box-shadow:0 4px 16px rgba(0,0,0,0.12);">
+  <div id="sessionBar" class="session-bar" style="background:#1a1a1a;border-radius:12px;padding:12px 16px;margin:12px 0;display:flex;align-items:center;gap:10px;flex-wrap:wrap;box-shadow:0 4px 16px rgba(0,0,0,0.12);">
     <div id="sessionStatus" style="flex:1;min-width:160px;">
       <div style="font-family:'Bebas Neue',sans-serif;font-size:11px;letter-spacing:2px;color:#666;margin-bottom:2px;">KÓD ZÁPASU</div>
       <div style="display:flex;align-items:center;gap:8px;">
@@ -559,7 +559,10 @@
       <button onclick="showJoinDialog()" style="background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:7px;color:#fff;font-family:'Bebas Neue',sans-serif;font-size:13px;letter-spacing:1px;padding:8px 14px;cursor:pointer;">🔗 PŘIPOJIT SE</button>
       <button id="copyLiveBtn" onclick="copyLiveLink()" style="display:none;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:7px;color:#4cff8f;font-family:'Bebas Neue',sans-serif;font-size:13px;letter-spacing:1px;padding:8px 14px;cursor:pointer;" title="Zkopírovat odkaz na LIVE stránku">● LIVE ODKAZ</button>
     </div>
-    <div id="syncDot" style="width:8px;height:8px;border-radius:50%;background:#444;flex-shrink:0;" title="Stav připojení"></div>
+    <div class="sync-state" role="status" aria-live="polite">
+      <div id="syncDot" style="width:8px;height:8px;border-radius:50%;background:#444;flex-shrink:0;" title="Stav připojení"></div>
+      <span id="syncStatusText" class="sync-status-text">Nepřipojeno</span>
+    </div>
     <button onclick="logoutOperator()" style="background:transparent;border:0;color:#777;font-family:'Inter',sans-serif;font-size:11px;cursor:pointer;padding:5px;">odhlásit</button>
   </div>
 
@@ -577,15 +580,15 @@
   <div class="clock-bar">
     <div class="period-block">
       <div class="period-nav">
-        <button class="pnav-btn" onclick="changePeriod(-1)">◀</button>
-        <button class="pnav-btn" onclick="changePeriod(1)">▶</button>
+        <button class="pnav-btn" onclick="changePeriod(-1)" title="Předchozí třetina" aria-label="Předchozí třetina">◀</button>
+        <button class="pnav-btn" onclick="changePeriod(1)" title="Další třetina" aria-label="Další třetina">▶</button>
       </div>
       <div class="period-label" id="periodDisplay">TŘETINA 1</div>
     </div>
     <div class="clock-display" id="clockDisplay">20:00</div>
     <div class="clock-controls">
       <button class="clock-btn start" id="clockStartBtn" onclick="toggleClock()">▶ START</button>
-      <button class="clock-btn reset-c" onclick="resetClock()">↺</button>
+      <button class="clock-btn reset-c" onclick="resetClock()" title="Nastavit výchozí čas" aria-label="Nastavit výchozí čas">↺</button>
     </div>
   </div>
 
@@ -614,8 +617,8 @@
       </div>
       <div class="score-display" id="scoreA">0</div>
       <div class="score-controls">
-        <button class="score-btn minus" onclick="adjustScore('A',-1)">−</button>
-        <button class="score-btn plus" onclick="adjustScore('A',1)">+</button>
+        <button class="score-btn minus" onclick="adjustScore('A',-1)" aria-label="Odebrat gól domácím">−</button>
+        <button class="score-btn plus" onclick="adjustScore('A',1)" aria-label="Přidat gól domácím">+</button>
       </div>
       <div class="pen-badges" id="penBadgesA"></div>
     </div>
@@ -633,21 +636,21 @@
       </div>
       <div class="score-display" id="scoreB">0</div>
       <div class="score-controls">
-        <button class="score-btn minus" onclick="adjustScore('B',-1)">−</button>
-        <button class="score-btn plus" onclick="adjustScore('B',1)">+</button>
+        <button class="score-btn minus" onclick="adjustScore('B',-1)" aria-label="Odebrat gól hostům">−</button>
+        <button class="score-btn plus" onclick="adjustScore('B',1)" aria-label="Přidat gól hostům">+</button>
       </div>
       <div class="pen-badges" id="penBadgesB"></div>
     </div>
   </div>
 
   <!-- ZÁLOŽKY -->
-  <div class="tabs">
-    <button class="tab active" onclick="switchTab('gol')">⚽ Góly</button>
-    <button class="tab" onclick="switchTab('pen')">🚫 Tresty</button>
-    <button class="tab" onclick="switchTab('roster')">👥 Hráči</button>
-    <button class="tab" onclick="switchTab('tymy')">🏒 Týmy</button>
-    <button class="tab" onclick="switchTab('prehled')">📋 Přehled</button>
-    <button class="tab" onclick="switchTab('stats')">📊 Statistiky</button>
+  <div class="tabs" role="tablist" aria-label="Část zápasu">
+    <button class="tab active" role="tab" aria-selected="true" onclick="switchTab('gol')">⚽ Góly</button>
+    <button class="tab" role="tab" aria-selected="false" onclick="switchTab('pen')">🚫 Tresty</button>
+    <button class="tab" role="tab" aria-selected="false" onclick="switchTab('roster')">👥 Hráči</button>
+    <button class="tab" role="tab" aria-selected="false" onclick="switchTab('tymy')">🏒 Týmy</button>
+    <button class="tab" role="tab" aria-selected="false" onclick="switchTab('prehled')">📋 Přehled</button>
+    <button class="tab" role="tab" aria-selected="false" onclick="switchTab('stats')">📊 Statistiky</button>
   </div>
 
   <!-- GÓL TAB -->
@@ -679,7 +682,7 @@
     <div class="form-stack">
       <div class="team-selector">
         <button class="team-opt active" id="penOptA" onclick="selectPenTeam('A')">DOMÁCÍ</button>
-        <button class="team-opt red active" id="penOptB" onclick="selectPenTeam('B')">HOSTÉ</button>
+        <button class="team-opt red" id="penOptB" onclick="selectPenTeam('B')">HOSTÉ</button>
       </div>
       <div class="form-row" style="align-items:center;gap:8px;">
         <input class="field" id="penNumQuick" placeholder="# hráče" type="number" min="1" max="99" style="max-width:90px;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:16px;" />
@@ -792,7 +795,7 @@
     <button class="ctrl-btn danger" onclick="resetGame()">↺ Reset</button>
   </div>
 </div>
-<div class="toast" id="toast"></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script src="/supabase.min.js"></script>
 <script src="/axono-config.js"></script>
@@ -1065,7 +1068,11 @@ document.getElementById('teamBName').addEventListener('change', () => { syncTeam
 // ─── TABS ─────────────────────────────────────────────────────────────────────
 const TAB_NAMES = ['gol','pen','roster','tymy','prehled','stats'];
 function switchTab(name) {
-  document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', TAB_NAMES[i]===name));
+  document.querySelectorAll('.tab').forEach((t,i) => {
+    const active = TAB_NAMES[i]===name;
+    t.classList.toggle('active', active);
+    t.setAttribute('aria-selected', String(active));
+  });
   document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
   document.getElementById('tab-'+name).classList.add('active');
   if (name==='stats') renderStats();
@@ -1448,10 +1455,13 @@ function resetGame() {
 
 function setSyncDot(status) {
   const dot = document.getElementById('syncDot');
+  const label = document.getElementById('syncStatusText');
   if (!dot) return;
   const colors = { ok: '#00e676', saving: '#ffab00', error: '#e8001c', off: '#444' };
+  const labels = { ok: 'Připojeno', saving: 'Ukládám…', error: 'Chyba spojení', off: 'Nepřipojeno' };
   dot.style.background = colors[status] || colors.off;
-  dot.title = { ok: 'Připojeno', saving: 'Ukládám...', error: 'Chyba připojení', off: 'Nepřipojeno' }[status] || '';
+  dot.title = labels[status] || labels.off;
+  if (label) label.textContent = labels[status] || labels.off;
 }
 
 // ─── SIDEBAR ──────────────────────────────────────────────────────────────────
