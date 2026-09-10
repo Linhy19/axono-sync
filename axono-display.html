@@ -427,12 +427,12 @@
 
 <div class="d-toast" id="dToast"></div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="/supabase.min.js"></script>
+<script src="/axono-config.js"></script>
 <script>
 // ─── CONFIG ───────────────────────────────────────────────────────────────────
-// 👉 Stejné údaje jako v axono-sync.html — vyplňte Project URL a anon key
-const SUPABASE_URL = 'https://wdwmjjbcphntymodnbub.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indkd21qamJjcGhudHltb2RuYnViIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMyMjk0NDQsImV4cCI6MjA4ODgwNTQ0NH0.5Er4or14JJZveXexxO7XCaRIhguZ3FHuLWDJbyzB0oU';
+const SUPABASE_URL = window.AXONO_CONFIG.supabaseUrl;
+const SUPABASE_KEY = window.AXONO_CONFIG.supabaseAnonKey;
 
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -443,7 +443,7 @@ let state = {
   matchId: null, code: null,
   teamA: 0, teamB: 0, period: 1,
   goals: [], penalties: [], penalties_active: [],
-  clock: { seconds: 1200, running: false, interval: null, startedAt: null }
+  clock: { seconds: 1200, running: false, interval: null, startedAt: null, startSeconds: 1200 }
 };
 let realtimeChannel = null;
 
@@ -599,23 +599,36 @@ function applyBreakOnDisplay(match) {
 function applyClockFromMatch(match) {
   clearInterval(state.clock.interval);
   state.clock.running = false;
+  state.clock.interval = null;
 
   if (match.clock_running && match.clock_started_at) {
-    const elapsed = Math.floor((Date.now() - new Date(match.clock_started_at).getTime()) / 1000);
-    state.clock.seconds = Math.max(0, match.clock_seconds - elapsed);
-    state.clock.running = true;
-    state.clock.interval = setInterval(() => {
-      state.clock.seconds = Math.max(0, state.clock.seconds - 1);
+    state.clock.startedAt = new Date(match.clock_started_at).getTime();
+    state.clock.startSeconds = Number(match.clock_seconds) || 0;
+    const tick = () => {
+      const previous = state.clock.seconds;
+      const elapsed = Math.floor((Date.now() - state.clock.startedAt) / 1000);
+      state.clock.seconds = Math.max(0, state.clock.startSeconds - elapsed);
       renderClock();
-      tickPenalties();
+      const delta = Math.max(0, previous - state.clock.seconds);
+      if (delta) tickPenalties(delta);
       if (state.clock.seconds === 0) {
         clearInterval(state.clock.interval);
+        state.clock.interval = null;
         state.clock.running = false;
         renderClock();
       }
-    }, 1000);
+    };
+    const elapsed = Math.floor((Date.now() - state.clock.startedAt) / 1000);
+    state.clock.seconds = Math.max(0, state.clock.startSeconds - elapsed);
+    state.clock.running = state.clock.seconds > 0;
+    if (state.clock.running) {
+      tick();
+      if (state.clock.running) state.clock.interval = setInterval(tick, 250);
+    }
   } else {
     state.clock.seconds = match.clock_seconds ?? state.clock.seconds;
+    state.clock.startedAt = null;
+    state.clock.startSeconds = state.clock.seconds;
   }
   renderClock();
 }
@@ -631,11 +644,11 @@ function renderClock() {
   status.className = 'd-clock-status' + (state.clock.running ? ' live' : '');
 }
 
-function tickPenalties() {
+function tickPenalties(delta = 1) {
   let changed = false;
   state.penalties.forEach(p => {
     if (!p.expired && p.remaining > 0) {
-      p.remaining--;
+      p.remaining = Math.max(0, p.remaining - delta);
       if (p.remaining <= 0) { p.expired = true; changed = true; }
     }
   });
