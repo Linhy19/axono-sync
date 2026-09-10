@@ -26,7 +26,10 @@
     check: '<path d="m5 12 4 4L19 6"/>',
     trash: '<path d="M4 7h16M10 11v6M14 11v6M6 7l1 14h10l1-14M9 7V4h6v3"/>',
     goalie: '<path d="M4 6h16l-2 14H6Z"/><path d="M8 10h8M7 14h10M9 6l3 14M15 6l-3 14"/>',
-    bolt: '<path d="M13 2 4 14h7l-1 8 9-12h-7Z"/>'
+    bolt: '<path d="M13 2 4 14h7l-1 8 9-12h-7Z"/>',
+    menu: '<path d="M4 6h16M4 12h16M4 18h16"/>',
+    previous: '<path d="m15 18-6-6 6-6"/>',
+    info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/>'
   };
 
   const tokenMap = new Map([
@@ -34,7 +37,8 @@
     ['✎', 'edit'], ['⏭', 'skip'], ['🔗', 'link'], ['●', 'live'], ['⚽', 'goal'],
     ['🚫', 'penalty'], ['👥', 'users'], ['🏒', 'team'], ['📋', 'list'], ['📊', 'chart'],
     ['📤', 'share'], ['🔒', 'lock'], ['📍', 'pin'], ['👤', 'user'], ['📅', 'calendar'],
-    ['⚙', 'settings'], ['✅', 'check'], ['🗑', 'trash'], ['🥅', 'goalie'], ['⚡', 'bolt']
+    ['⚙', 'settings'], ['✅', 'check'], ['🗑', 'trash'], ['🥅', 'goalie'], ['⚡', 'bolt'],
+    ['☰', 'menu'], ['◀', 'previous'], ['ℹ️', 'info']
   ]);
 
   function icon(name) {
@@ -56,7 +60,7 @@
 
   function enhance(root) {
     if (root instanceof HTMLElement) enhanceElement(root);
-    root.querySelectorAll?.('button, a, .entry-icon, .d-event-icon, .d-section-title, .location-line, .inline-icon-text, .pen-badge, .d-pen-badge, .toast, .a-toast, .d-clock-status').forEach(enhanceElement);
+    root.querySelectorAll?.('button, a, .entry-icon, .d-event-icon, .d-section-title, .location-line, .inline-icon-text, .pen-badge, .d-pen-badge, .toast, .a-toast, .d-toast, .d-clock-status, .a-info').forEach(enhanceElement);
   }
 
   function init() {
