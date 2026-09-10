@@ -672,7 +672,7 @@
         <select class="field" id="assistSelect" style="flex:1;"></select>
       </div>
       <input class="field" id="golMinuta" placeholder="Minuta (volitelné)" type="number" min="0" max="99" />
-      <button class="submit-btn" onclick="addGoal()">🏒 ZAPSAT GÓL</button>
+      <button class="submit-btn" id="goalSubmitButton" onclick="addGoal()">🏒 ZAPSAT GÓL</button>
     </div>
   </div>
 
@@ -699,7 +699,7 @@
         <input class="field" id="penMinuta" placeholder="Min." type="number" min="0" max="99" style="max-width:72px;" />
       </div>
       <input class="field" id="penReason" placeholder="Důvod trestu (volitelné)" />
-      <button class="submit-btn red-btn" onclick="addPenalty()">🚫 ZAPSAT TREST</button>
+      <button class="submit-btn red-btn" id="penaltySubmitButton" onclick="addPenalty()">🚫 ZAPSAT TREST</button>
     </div>
     <div style="margin-top:13px;">
       <div class="section-header">
@@ -796,6 +796,10 @@
   </div>
 </div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
+<div class="undo-bar" id="undoBar" role="status" aria-live="polite" aria-hidden="true">
+  <span id="undoMessage">Akce byla uložena</span>
+  <button class="undo-button" onclick="undoLastAction()">↶ VRÁTIT</button>
+</div>
 
 <script src="/supabase.min.js"></script>
 <script src="/axono-config.js"></script>
@@ -1096,7 +1100,7 @@ function renderRosters() {
       <div class="player-item">
         <span class="player-num">#${esc(p.num)}</span>
         <span class="player-name${p.cap?' cap':''}">${esc(p.name)}</span>
-        <button class="del-btn" onclick="removePlayer('${t}',${p.id})">✕</button>
+        <button class="del-btn" onclick="removePlayer(${jsString(t)},${jsString(p.id)})" title="Odebrat hráče" aria-label="Odebrat hráče">✕</button>
       </div>`).join('');
   });
 }
@@ -1161,8 +1165,8 @@ function renderPenList() {
         <div class="entry-sub">${p.teamName} · T${p.period} · ${p.minute}' · ${p.mins>0?p.mins+' min':'do konce'}${p.reason?' · '+esc(p.reason):''}</div>
       </div>
       ${!p.expired&&p.remaining>0?`<div class="pen-timer">${timeStr}</div>`:''}
-      ${!p.expired?`<button class="expire-btn" onclick="expirePenalty(${p.id})">✓ KONEC</button>`:'<span style="font-size:9px;color:var(--muted);">VYPRŠEL</span>'}
-      <button class="del-btn" onclick="deletePenalty(${p.id})">✕</button>
+      ${!p.expired?`<button class="expire-btn" onclick="expirePenalty(${jsString(p.id)})">✓ KONEC</button>`:'<span style="font-size:9px;color:var(--muted);">VYPRŠEL</span>'}
+      <button class="del-btn" onclick="deletePenalty(${jsString(p.id)})" title="Smazat trest" aria-label="Smazat trest">✕</button>
     </div>`;
   }).join('');
 }
@@ -1192,7 +1196,7 @@ function renderEventLog() {
         ${ev.assist?`<div class="entry-sub">Asist: ${esc(ev.assist)}</div>`:''}
       </div>
       <div class="entry-meta"><div>${esc(ev.teamName)}</div><div>T${ev.period} · ${ev.minute}'</div></div>
-      <button class="del-btn" onclick="deleteGoal(${ev.id})">✕</button>
+      <button class="del-btn" onclick="deleteGoal(${jsString(ev.id)})" title="Smazat gól" aria-label="Smazat gól">✕</button>
     </div>` : `
     <div class="entry-row penalty-row ${ev.team==='B'?'team-b':''}">
       <div class="entry-icon">🚫</div>
@@ -1201,7 +1205,7 @@ function renderEventLog() {
         <div class="entry-sub">${ev.mins>0?ev.mins+' min':'do konce'}${ev.reason?' · '+esc(ev.reason):''}</div>
       </div>
       <div class="entry-meta"><div>${esc(ev.teamName)}</div><div>T${ev.period} · ${ev.minute}'</div></div>
-      <button class="del-btn" onclick="deletePenalty(${ev.id})">✕</button>
+      <button class="del-btn" onclick="deletePenalty(${jsString(ev.id)})" title="Smazat trest" aria-label="Smazat trest">✕</button>
     </div>`).join('');
 }
 function updateEventCount() {
@@ -1240,12 +1244,51 @@ function renderStats() {
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
 function getTeamName(t) { return t==='A'?(document.getElementById('teamAName').value||'DOMÁCÍ'):(document.getElementById('teamBName').value||'HOSTÉ'); }
 function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function jsString(value) { return JSON.stringify(String(value)).replace(/"/g, '&quot;'); }
 function showToast(msg, gold=false) {
   const t = document.getElementById('toast');
   t.textContent = msg;
   t.className = 'toast' + (gold?' goal-toast':'') + ' show';
   clearTimeout(t._timer);
   t._timer = setTimeout(()=>t.classList.remove('show'), 2400);
+}
+
+let pendingUndo = null;
+let undoTimer = null;
+
+function setActionButtonBusy(button, busy, label) {
+  if (!button) return;
+  button.disabled = busy;
+  button.textContent = label;
+}
+
+function offerUndo(action, message) {
+  pendingUndo = action;
+  const bar = document.getElementById('undoBar');
+  document.getElementById('undoMessage').textContent = message;
+  bar.classList.add('show');
+  bar.setAttribute('aria-hidden', 'false');
+  clearTimeout(undoTimer);
+  undoTimer = setTimeout(clearUndo, 6500);
+}
+
+function clearUndo() {
+  pendingUndo = null;
+  clearTimeout(undoTimer);
+  const bar = document.getElementById('undoBar');
+  if (!bar) return;
+  bar.classList.remove('show');
+  bar.setAttribute('aria-hidden', 'true');
+}
+
+async function undoLastAction() {
+  const action = pendingUndo;
+  if (!action) return;
+  clearUndo();
+  let removed = false;
+  if (action.type === 'goal') removed = await deleteGoal(action.id, { silent: true });
+  if (action.type === 'penalty') removed = await deletePenalty(action.id, { silent: true });
+  if (removed) showToast('Poslední akce byla vrácena');
 }
 
 // ─── EXPORT ───────────────────────────────────────────────────────────────────
@@ -1442,6 +1485,7 @@ ${stats.length ? `<div class="section">
 // ─── RESET ────────────────────────────────────────────────────────────────────
 function resetGame() {
   if (!confirm('Opravdu resetovat celý zápas? Tuto akci nelze vrátit.')) return;
+  clearUndo();
   stopClock();
   Object.assign(state, { teamA:0, teamB:0, period:1, goals:[], penalties:[], goalTeam:'A', penTeam:'A', rosterTeam:'A', goalId:0, penId:0, playerId:0, rosters:{A:[],B:[]}, clock:{seconds:20*60,running:false,interval:null} });
   document.getElementById('teamAName').value='DOMÁCÍ'; document.getElementById('teamBName').value='HOSTÉ';
@@ -1897,37 +1941,65 @@ function saveState() { saveMatchState(); }
 // ─── SUPABASE MUTACE ─────────────────────────────────────────────────────────
 
 // ── GOALS ──
-function addGoal() {
+async function addGoal() {
   const scorer = resolvePlayer('scorerNumQuick', 'scorerSelect', state.goalTeam);
   const assist = resolvePlayer('assistNumQuick', 'assistSelect', state.goalTeam);
   const minute = document.getElementById('golMinuta').value.trim() || String(Math.floor(((state.period>=4?5:20)*60-state.clock.seconds)/60));
   if (!scorer) { showToast('Zadejte číslo nebo vyberte střelce!'); return; }
   const teamName = getTeamName(state.goalTeam);
-  const goalObj = { id: ++state.goalId, team: state.goalTeam, teamName, scorer, assist, minute: minute||'—', period: state.period };
-  state.goals.push(goalObj);
-  adjustScore(state.goalTeam, 1);
-  ['scorerNumQuick','assistNumQuick','golMinuta'].forEach(id => { document.getElementById(id).value=''; });
-  document.getElementById('scorerSelect').value='';
-  document.getElementById('assistSelect').value='';
-  showToast(`⚡ GÓL — ${scorer}!`, true);
-  renderEventLog(); updateEventCount();
-  if (currentMatchId) {
-    sb.from('goals').insert({ match_id: currentMatchId, team: state.goalTeam, team_name: teamName, scorer, assist, minute: minute||'—', period: state.period }).then(() => saveMatchState());
+  const button = document.getElementById('goalSubmitButton');
+  setActionButtonBusy(button, true, 'UKLÁDÁM GÓL…');
+  try {
+    let id = `local-goal-${++state.goalId}`;
+    if (currentMatchId) {
+      setSyncDot('saving');
+      const { data, error } = await sb.from('goals').insert({
+        match_id: currentMatchId, team: state.goalTeam, team_name: teamName,
+        scorer, assist, minute: minute||'—', period: state.period
+      }).select('id').single();
+      if (error) throw error;
+      id = data.id;
+    }
+    const goalObj = { id, team: state.goalTeam, teamName, scorer, assist, minute: minute||'—', period: state.period };
+    if (!state.goals.some(g => String(g.id) === String(id))) state.goals.push(goalObj);
+    adjustScore(state.goalTeam, 1);
+    ['scorerNumQuick','assistNumQuick','golMinuta'].forEach(fieldId => { document.getElementById(fieldId).value=''; });
+    document.getElementById('scorerSelect').value='';
+    document.getElementById('assistSelect').value='';
+    renderEventLog(); updateEventCount();
+    offerUndo({ type: 'goal', id }, `Gól: ${scorer}`);
+  } catch (error) {
+    setSyncDot('error');
+    showToast('Gól se nepodařilo uložit. Zkuste to znovu.');
+    console.warn('Goal save failed:', error);
+  } finally {
+    setActionButtonBusy(button, false, '🏒 ZAPSAT GÓL');
   }
 }
 
-function deleteGoal(id) {
-  const g = state.goals.find(x=>x.id===id); if(!g) return;
+async function deleteGoal(id, options = {}) {
+  const g = state.goals.find(x=>String(x.id)===String(id)); if(!g) return false;
+  if (!options.silent && pendingUndo?.type === 'goal' && String(pendingUndo.id) === String(id)) clearUndo();
   if (g.team==='A') state.teamA=Math.max(0,state.teamA-1); else state.teamB=Math.max(0,state.teamB-1);
-  state.goals = state.goals.filter(x=>x.id!==id);
+  state.goals = state.goals.filter(x=>String(x.id)!==String(id));
   updateScoreboard(); renderEventLog(); updateEventCount();
-  if (currentMatchId) {
-    sb.from('goals').delete().eq('id', id).then(() => saveMatchState());
+  if (currentMatchId && !String(id).startsWith('local-')) {
+    const { error } = await sb.from('goals').delete().eq('id', id);
+    if (error) {
+      state.goals.push(g);
+      if (g.team==='A') state.teamA++; else state.teamB++;
+      updateScoreboard(); renderEventLog(); updateEventCount();
+      showToast('Gól se nepodařilo odstranit.');
+      return false;
+    }
   }
+  await saveMatchState();
+  if (!options.silent) showToast('Gól odstraněn');
+  return true;
 }
 
 // ── PENALTIES ──
-function addPenalty() {
+async function addPenalty() {
   const player = resolvePlayer('penNumQuick', 'penPlayerSelect', state.penTeam);
   const mins = parseInt(document.getElementById('penType').value);
   const minute = document.getElementById('penMinuta').value.trim();
@@ -1935,25 +2007,57 @@ function addPenalty() {
   if (!player) { showToast('Zadejte číslo nebo vyberte hráče!'); return; }
   const teamName = getTeamName(state.penTeam);
   const remaining = mins > 0 ? mins * 60 : -1;
-  const penObj = { id: ++state.penId, team: state.penTeam, teamName, player, mins, reason, minute: minute||'—', period: state.period, remaining, expired: false };
-  state.penalties.push(penObj);
-  ['penNumQuick','penMinuta','penReason'].forEach(id=>{ document.getElementById(id).value=''; });
-  document.getElementById('penPlayerSelect').value='';
-  renderPenList(); renderPenBadges(); renderEventLog(); updateEventCount();
-  showToast(`🚫 Trest: ${player} (${mins>0?mins+' min':'do konce'})`);
-  if (currentMatchId) {
-    sb.from('penalties').insert({ match_id: currentMatchId, team: state.penTeam, team_name: teamName, player, mins, reason, minute: minute||'—', period: state.period, remaining, expired: false });
+  const button = document.getElementById('penaltySubmitButton');
+  setActionButtonBusy(button, true, 'UKLÁDÁM TREST…');
+  try {
+    let id = `local-penalty-${++state.penId}`;
+    if (currentMatchId) {
+      setSyncDot('saving');
+      const { data, error } = await sb.from('penalties').insert({
+        match_id: currentMatchId, team: state.penTeam, team_name: teamName,
+        player, mins, reason, minute: minute||'—', period: state.period,
+        remaining, expired: false
+      }).select('id').single();
+      if (error) throw error;
+      id = data.id;
+    }
+    const penObj = { id, team: state.penTeam, teamName, player, mins, reason, minute: minute||'—', period: state.period, remaining, expired: false };
+    if (!state.penalties.some(p => String(p.id) === String(id))) state.penalties.push(penObj);
+    ['penNumQuick','penMinuta','penReason'].forEach(fieldId=>{ document.getElementById(fieldId).value=''; });
+    document.getElementById('penPlayerSelect').value='';
+    renderPenList(); renderPenBadges(); renderEventLog(); updateEventCount();
+    setSyncDot('ok');
+    offerUndo({ type: 'penalty', id }, `Trest: ${player}`);
+  } catch (error) {
+    setSyncDot('error');
+    showToast('Trest se nepodařilo uložit. Zkuste to znovu.');
+    console.warn('Penalty save failed:', error);
+  } finally {
+    setActionButtonBusy(button, false, '🚫 ZAPSAT TREST');
   }
 }
 
-function deletePenalty(id) {
-  state.penalties = state.penalties.filter(x=>x.id!==id);
+async function deletePenalty(id, options = {}) {
+  const penalty = state.penalties.find(x => String(x.id) === String(id));
+  if (!penalty) return false;
+  if (!options.silent && pendingUndo?.type === 'penalty' && String(pendingUndo.id) === String(id)) clearUndo();
+  state.penalties = state.penalties.filter(x=>String(x.id)!==String(id));
   renderPenList(); renderPenBadges(); renderEventLog(); updateEventCount();
-  if (currentMatchId) sb.from('penalties').delete().eq('id', id);
+  if (currentMatchId && !String(id).startsWith('local-')) {
+    const { error } = await sb.from('penalties').delete().eq('id', id);
+    if (error) {
+      state.penalties.push(penalty);
+      renderPenList(); renderPenBadges(); renderEventLog(); updateEventCount();
+      showToast('Trest se nepodařilo odstranit.');
+      return false;
+    }
+  }
+  if (!options.silent) showToast('Trest odstraněn');
+  return true;
 }
 
 function expirePenalty(id) {
-  const p = state.penalties.find(x=>x.id===id);
+  const p = state.penalties.find(x=>String(x.id)===String(id));
   if (p) { p.expired=true; p.remaining=0; }
   renderPenList(); renderPenBadges();
   if (currentMatchId) sb.from('penalties').update({ expired: true, remaining: 0 }).eq('id', id);
@@ -1982,7 +2086,7 @@ function addPlayer() {
 }
 
 function removePlayer(team, id) {
-  state.rosters[team] = state.rosters[team].filter(p => p.id !== id);
+  state.rosters[team] = state.rosters[team].filter(p => String(p.id) !== String(id));
   renderRosters(); updatePlayerSelects();
   if (currentMatchId) sb.from('players').delete().eq('id', id);
 }
