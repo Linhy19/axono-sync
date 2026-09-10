@@ -45,6 +45,10 @@
     transition: border-color 0.2s;
   }
   .pin-input:focus { border-color: var(--red); }
+  .pin-input.login-field {
+    font-family: 'Inter', sans-serif; font-size: 14px; letter-spacing: 0;
+    text-align: left; padding: 12px 14px;
+  }
   .pin-btn {
     background: var(--red); border: none; border-radius: 10px; color: #fff;
     font-family: 'Bebas Neue', sans-serif; font-size: 16px; letter-spacing: 3px;
@@ -204,18 +208,19 @@
 </head>
 <body>
 
-<!-- PIN SCREEN -->
+<!-- LOGIN SCREEN -->
 <div id="pinScreen">
   <div class="pin-logo">
     <img src="/logo.png" alt="AXONO" onerror="this.outerHTML='<span style=\'font-family:Bebas Neue,sans-serif;font-size:36px;letter-spacing:6px;color:var(--dark)\'>AXONO</span>'">
   </div>
   <div class="pin-badge">ADMIN</div>
   <div class="pin-box">
-    <div class="pin-label">ZADEJTE ADMIN PIN</div>
-    <input class="pin-input" type="password" id="pinInput" placeholder="••••" maxlength="10"
-      onkeydown="if(event.key==='Enter') verifyPin()" />
-    <button class="pin-btn" onclick="verifyPin()">VSTOUPIT</button>
-    <div class="pin-error" id="pinError">Nesprávný PIN</div>
+    <div class="pin-label">PŘIHLÁŠENÍ SPRÁVCE</div>
+    <input class="pin-input login-field" type="email" id="loginEmail" placeholder="E-mail" autocomplete="username" />
+    <input class="pin-input login-field" type="password" id="loginPassword" placeholder="Heslo" autocomplete="current-password"
+      onkeydown="if(event.key==='Enter') signInAdmin()" />
+    <button class="pin-btn" id="loginButton" onclick="signInAdmin()">PŘIHLÁSIT</button>
+    <div class="pin-error" id="pinError">Přihlášení se nezdařilo.</div>
   </div>
 </div>
 
@@ -377,18 +382,10 @@
     <!-- ── NASTAVENÍ ── -->
     <div class="a-tab-panel" id="panel-settings">
       <div class="a-card" style="max-width:440px;">
-        <div class="a-card-title">ADMIN PIN</div>
-        <div class="a-form">
-          <div>
-            <div class="a-label">Nový PIN</div>
-            <input class="a-field" type="password" id="newPin" placeholder="min. 4 znaky" maxlength="20" />
-          </div>
-          <div>
-            <div class="a-label">Potvrdit PIN</div>
-            <input class="a-field" type="password" id="newPinConfirm" placeholder="zopakujte PIN" maxlength="20" />
-          </div>
-          <button class="a-btn primary" onclick="changePin()">💾 ULOŽIT PIN</button>
-          <div id="pinChangeMsg" style="font-size:12px;color:var(--green);display:none;">✓ PIN byl změněn</div>
+        <div class="a-card-title">PŘIHLÁŠENÝ ÚČET</div>
+        <div style="font-size:13px;color:var(--muted);line-height:1.7;font-family:'Inter',sans-serif;">
+          <div class="stat-row"><span>E-mail</span><span id="adminEmail" style="font-weight:600;color:var(--dark);">—</span></div>
+          <p style="margin-top:12px;">Účty a hesla se spravují v Supabase Authentication. Administrační PIN už aplikace nepoužívá.</p>
         </div>
       </div>
       <div class="a-card" style="max-width:440px;">
@@ -512,39 +509,62 @@
 
 <script src="/supabase.min.js"></script>
 <script src="/axono-config.js"></script>
+<script src="/axono-client.js"></script>
 <script>
-const SUPABASE_URL = window.AXONO_CONFIG.supabaseUrl;
-const SUPABASE_KEY = window.AXONO_CONFIG.supabaseAnonKey;
-const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const sb = window.axonoSupabase;
 
-// ─── PIN ──────────────────────────────────────────────────────────────────────
-async function verifyPin() {
-  const input = document.getElementById('pinInput').value.trim();
-  if (!input) return;
+// ─── AUTH ─────────────────────────────────────────────────────────────────────
+let adminInitialized = false;
+
+async function signInAdmin() {
+  const email = document.getElementById('loginEmail').value.trim();
+  const password = document.getElementById('loginPassword').value;
+  const button = document.getElementById('loginButton');
+  const errorEl = document.getElementById('pinError');
+  if (!email || !password) {
+    errorEl.textContent = 'Vyplňte e-mail a heslo.';
+    errorEl.style.display = 'block';
+    return;
+  }
+
+  button.disabled = true;
+  button.textContent = 'PŘIHLAŠUJI…';
+  errorEl.style.display = 'none';
   try {
-    const { data } = await sb.from('settings').select('value').eq('key', 'admin_pin').single();
-    const correct = data?.value || '1234';
-    if (input === correct) {
-      sessionStorage.setItem('axono_admin', '1');
-      document.getElementById('pinScreen').classList.add('hidden');
-      document.getElementById('adminApp').classList.add('visible');
-      initAdmin().then(restoreTabFromHash);
-    } else {
-      const err = document.getElementById('pinError');
-      err.style.display = 'block';
-      document.getElementById('pinInput').value = '';
-      setTimeout(() => err.style.display = 'none', 2500);
-    }
+    const session = await window.AxonoAuth.signIn(email, password);
+    await showAdmin(session);
+    document.getElementById('loginPassword').value = '';
   } catch(e) {
-    toast('Chyba připojení k DB', 'err');
+    errorEl.textContent = 'Nesprávný e-mail nebo heslo.';
+    errorEl.style.display = 'block';
+  } finally {
+    button.disabled = false;
+    button.textContent = 'PŘIHLÁSIT';
   }
 }
 
-function logout() {
-  sessionStorage.removeItem('axono_admin');
+async function showAdmin(session) {
+  if (!session) return showAdminLogin();
+  document.getElementById('pinScreen').classList.add('hidden');
+  document.getElementById('adminApp').classList.add('visible');
+  const emailEl = document.getElementById('adminEmail');
+  if (emailEl) emailEl.textContent = session.user?.email || 'Přihlášený uživatel';
+  if (!adminInitialized) {
+    adminInitialized = true;
+    await initAdmin();
+    restoreTabFromHash();
+  }
+}
+
+function showAdminLogin() {
   document.getElementById('pinScreen').classList.remove('hidden');
   document.getElementById('adminApp').classList.remove('visible');
-  document.getElementById('pinInput').value = '';
+  adminInitialized = false;
+}
+
+async function logout() {
+  try { await window.AxonoAuth.signOut(); }
+  finally { showAdminLogin(); }
 }
 
 // ─── INIT ─────────────────────────────────────────────────────────────────────
@@ -926,28 +946,6 @@ async function saveEditPlayer() {
   } catch(e) { toast('Chyba: ' + e.message, 'err'); }
 }
 
-// ─── NASTAVENÍ ────────────────────────────────────────────────────────────────
-async function changePin() {
-  const p1 = document.getElementById('newPin').value;
-  const p2 = document.getElementById('newPinConfirm').value;
-  if (!p1 || p1.length < 4) { toast('PIN musí mít min. 4 znaky', 'err'); return; }
-  if (p1 !== p2) { toast('PINy se neshodují', 'err'); return; }
-  try {
-    const { data } = await sb.from('settings').select('id').eq('key', 'admin_pin').single().catch(() => ({data:null}));
-    if (data) {
-      await sb.from('settings').update({ value: p1 }).eq('key', 'admin_pin');
-    } else {
-      await sb.from('settings').insert({ key: 'admin_pin', value: p1 });
-    }
-    document.getElementById('newPin').value = '';
-    document.getElementById('newPinConfirm').value = '';
-    const msg = document.getElementById('pinChangeMsg');
-    msg.style.display = 'block';
-    setTimeout(() => msg.style.display = 'none', 3000);
-    toast('✅ PIN změněn', 'ok');
-  } catch(e) { toast('Chyba: ' + e.message, 'err'); }
-}
-
 async function loadStats() {
   try {
     const [m, t, p] = await Promise.all([
@@ -985,11 +983,14 @@ window.addEventListener('hashchange', () => {
   if (valid.includes(hash)) showTab(hash, true);
 });
 
-if (sessionStorage.getItem('axono_admin') === '1') {
-  document.getElementById('pinScreen').classList.add('hidden');
-  document.getElementById('adminApp').classList.add('visible');
-  initAdmin().then(restoreTabFromHash);
-}
+window.AxonoAuth.getSession()
+  .then(showAdmin)
+  .catch(() => showAdminLogin());
+
+window.AxonoAuth.onChange(session => {
+  if (session) showAdmin(session);
+  else showAdminLogin();
+});
 </script>
 </body>
 </html>
