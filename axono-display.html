@@ -320,6 +320,7 @@
     .d-team-name { font-size: 24px; }
   }
 </style>
+<link rel="stylesheet" href="/axono-ui.css">
 </head>
 <body>
 
@@ -366,7 +367,7 @@
 
     <!-- ARÉNA -->
     <div id="dArenaRow" style="display:none;text-align:center;font-family:'Inter',sans-serif;font-size:11px;color:var(--muted);letter-spacing:1.5px;padding:4px 0 2px;">
-      📍 <span id="dArenaText"></span>
+      <span class="inline-icon-text">📍</span> <span id="dArenaText"></span>
     </div>
 
     <!-- PŘESTÁVKA BANNER -->
@@ -375,7 +376,7 @@
         <div id="dBreakLabel" style="font-family:'Bebas Neue',sans-serif;font-size:13px;letter-spacing:3px;color:var(--warn);">PŘESTÁVKA</div>
         <div id="dBreakClock" style="font-family:'Bebas Neue',sans-serif;font-size:38px;letter-spacing:2px;color:#fff;">00:00</div>
       </div>
-      <div style="font-family:'Bebas Neue',sans-serif;font-size:13px;letter-spacing:2px;color:rgba(255,255,255,0.35);">⏸ PŘERUŠENO</div>
+      <div class="inline-icon-text" style="font-family:'Bebas Neue',sans-serif;font-size:13px;letter-spacing:2px;color:rgba(255,255,255,0.35);">⏸ PŘERUŠENO</div>
     </div>
 
     <!-- SKÓRE — přes celou šířku, vycentrované -->
@@ -430,6 +431,7 @@
 <script src="/supabase.min.js"></script>
 <script src="/axono-config.js"></script>
 <script src="/axono-client.js"></script>
+<script src="/axono-icons.js"></script>
 <script>
 // ─── CONFIG ───────────────────────────────────────────────────────────────────
 const sb = window.axonoSupabase;
