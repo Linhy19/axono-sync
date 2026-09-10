@@ -29,7 +29,8 @@
     bolt: '<path d="M13 2 4 14h7l-1 8 9-12h-7Z"/>',
     menu: '<path d="M4 6h16M4 12h16M4 18h16"/>',
     previous: '<path d="m15 18-6-6 6-6"/>',
-    info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/>'
+    info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/>',
+    undo: '<path d="M9 7 4 12l5 5"/><path d="M4 12h9a7 7 0 0 1 7 7"/>'
   };
 
   const tokenMap = new Map([
@@ -38,7 +39,7 @@
     ['🚫', 'penalty'], ['👥', 'users'], ['🏒', 'team'], ['📋', 'list'], ['📊', 'chart'],
     ['📤', 'share'], ['🔒', 'lock'], ['📍', 'pin'], ['👤', 'user'], ['📅', 'calendar'],
     ['⚙', 'settings'], ['✅', 'check'], ['🗑', 'trash'], ['🥅', 'goalie'], ['⚡', 'bolt'],
-    ['☰', 'menu'], ['◀', 'previous'], ['ℹ️', 'info']
+    ['☰', 'menu'], ['◀', 'previous'], ['ℹ️', 'info'], ['↶', 'undo']
   ]);
 
   function icon(name) {
