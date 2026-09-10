@@ -483,6 +483,7 @@
   .break-btn.edit-time { background: transparent; color: rgba(255,255,255,0.5); border: 1px solid rgba(255,255,255,0.15); font-size: 11px; }
   .break-btn:hover { filter: brightness(1.2); }
 </style>
+<link rel="stylesheet" href="/axono-ui.css">
 </head>
 <body>
 <div class="operator-login" id="operatorLogin">
@@ -708,7 +709,7 @@
   <!-- HRÁČI TAB -->
   <div class="section tab-content" id="tab-roster">
     <div style="background:var(--bg);border:1.5px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:12px;display:flex;align-items:center;gap:10px;">
-      <span style="font-size:18px;">🔒</span>
+      <span class="inline-icon-text" style="font-size:18px;">🔒</span>
       <div style="font-size:12px;color:var(--muted);font-family:'Inter',sans-serif;line-height:1.5;">
         Správa soupisek je v <strong style="color:var(--dark);">AXONO ADMIN</strong>. Zde můžeš soupisku jen načíst a zobrazit.<br>
         <a href="/axono-admin.html" target="_blank" style="color:var(--red);font-weight:600;text-decoration:none;">Otevřít Admin →</a>
@@ -744,7 +745,7 @@
   <!-- TÝMY TAB -->
   <div class="section tab-content" id="tab-tymy">
     <div style="background:var(--bg);border:1.5px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:14px;display:flex;align-items:center;gap:10px;">
-      <span style="font-size:18px;">🔒</span>
+      <span class="inline-icon-text" style="font-size:18px;">🔒</span>
       <div style="font-size:12px;color:var(--muted);font-family:'Inter',sans-serif;line-height:1.5;">
         Přidávání a editace týmů je v <strong style="color:var(--dark);">AXONO ADMIN</strong>.<br>
         <a href="/axono-admin.html" target="_blank" style="color:var(--red);font-weight:600;text-decoration:none;">Otevřít Admin →</a>
@@ -769,7 +770,7 @@
         <div class="entry-list" id="eventLog"><div class="empty-msg">Žádné události. Zápas začíná!</div></div>
         <!-- Čas přestávek -->
         <div id="breakSummary" style="display:none;margin-top:10px;padding:8px 12px;background:var(--bg);border:1.5px solid var(--line);border-radius:9px;border-left:3px solid var(--warn);display:flex;align-items:center;justify-content:space-between;">
-          <span style="font-size:12px;color:var(--muted);font-family:'Inter',sans-serif;">⏸ Celkový čas přestávek</span>
+          <span class="inline-icon-text" style="font-size:12px;color:var(--muted);font-family:'Inter',sans-serif;">⏸ Celkový čas přestávek</span>
           <span id="breakTotalDisplay" style="font-family:'Bebas Neue',sans-serif;font-size:18px;color:var(--warn);">0:00</span>
         </div>
       </div>
@@ -796,6 +797,7 @@
 <script src="/supabase.min.js"></script>
 <script src="/axono-config.js"></script>
 <script src="/axono-client.js"></script>
+<script src="/axono-icons.js"></script>
 <script>
 
 // ─── SUPABASE CONFIG ─────────────────────────────────────────────────────────
