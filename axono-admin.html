@@ -241,11 +241,11 @@
     </div>
   </header>
 
-  <nav class="a-nav" aria-label="Administrace">
-    <button class="a-nav-tab active" onclick="showTab('matches')">📅 ZÁPASY</button>
-    <button class="a-nav-tab" onclick="showTab('teams')">🏒 TÝMY</button>
-    <button class="a-nav-tab" onclick="showTab('players')">👤 HRÁČI</button>
-    <button class="a-nav-tab" onclick="showTab('settings')">⚙ NASTAVENÍ</button>
+  <nav class="a-nav" role="tablist" aria-label="Administrace">
+    <button class="a-nav-tab active" role="tab" aria-selected="true" onclick="showTab('matches')">📅 ZÁPASY</button>
+    <button class="a-nav-tab" role="tab" aria-selected="false" onclick="showTab('teams')">🏒 TÝMY</button>
+    <button class="a-nav-tab" role="tab" aria-selected="false" onclick="showTab('players')">👤 HRÁČI</button>
+    <button class="a-nav-tab" role="tab" aria-selected="false" onclick="showTab('settings')">⚙ NASTAVENÍ</button>
   </nav>
 
   <main class="a-content">
@@ -305,7 +305,7 @@
               <div class="a-label">Název týmu</div>
               <input class="a-field" id="tName" placeholder="HC Axono Patriots" maxlength="40" />
             </div>
-            <div class="a-field-row">
+            <div class="a-field-row a-compact-row">
               <div style="flex:1">
                 <div class="a-label">Zkratka</div>
                 <input class="a-field" id="tShort" placeholder="HBC" maxlength="8" />
@@ -319,7 +319,7 @@
               <div class="a-label">Domácí aréna</div>
               <input class="a-field" id="tArena" placeholder="Zimní stadion Axono" maxlength="60" />
             </div>
-            <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);cursor:pointer;">
+            <label class="a-check-row">
               <input type="checkbox" id="tIsHome" style="accent-color:var(--red);width:15px;height:15px;" />
               Náš tým (domácí) — načítá se automaticky
             </label>
@@ -350,7 +350,7 @@
               <div class="a-label">Tým</div>
               <select class="a-field" id="pTeam"><option value="">— vyberte tým —</option></select>
             </div>
-            <div class="a-field-row">
+            <div class="a-field-row a-player-row">
               <div style="max-width:80px;">
                 <div class="a-label">Číslo</div>
                 <input class="a-field" id="pNum" type="number" min="1" max="99" placeholder="#" />
@@ -360,11 +360,11 @@
                 <input class="a-field" id="pName" placeholder="Jan Novák" maxlength="40" />
               </div>
             </div>
-            <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);cursor:pointer;">
+            <label class="a-check-row">
               <input type="checkbox" id="pCap" style="accent-color:var(--red);width:15px;height:15px;" />
               Kapitán
             </label>
-            <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);cursor:pointer;">
+            <label class="a-check-row">
               <input type="checkbox" id="pGoalie" style="accent-color:#1565c0;width:15px;height:15px;" />
               Gólman
             </label>
@@ -397,7 +397,7 @@
           <div class="stat-row"><span>Databáze</span><span id="dbStatus" style="font-weight:600;">—</span></div>
           <div class="stat-row"><span>Zápasů celkem</span><span id="totalMatches" class="stat-val">—</span></div>
           <div class="stat-row"><span>Týmů</span><span id="totalTeams" class="stat-val">—</span></div>
-          <div class="stat-row"><span>Hráčů v soupisku</span><span id="totalPlayers" class="stat-val">—</span></div>
+          <div class="stat-row"><span>Hráčů v soupisce</span><span id="totalPlayers" class="stat-val">—</span></div>
         </div>
       </div>
     </div>
@@ -579,13 +579,19 @@ async function initAdmin() {
 // ─── TABS ─────────────────────────────────────────────────────────────────────
 function showTab(name, fromHash) {
   document.querySelectorAll('.a-tab-panel').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.a-nav-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.a-nav-tab').forEach(t => {
+    t.classList.remove('active');
+    t.setAttribute('aria-selected', 'false');
+  });
   const panel = document.getElementById('panel-' + name);
   if (!panel) return;
   panel.classList.add('active');
   // Aktivovat správné tlačítko v nav
   document.querySelectorAll('.a-nav-tab').forEach(t => {
-    if (t.getAttribute('onclick') && t.getAttribute('onclick').includes("'" + name + "'")) t.classList.add('active');
+    if (t.getAttribute('onclick') && t.getAttribute('onclick').includes("'" + name + "'")) {
+      t.classList.add('active');
+      t.setAttribute('aria-selected', 'true');
+    }
   });
   if (!fromHash) window.location.hash = name;
 }
