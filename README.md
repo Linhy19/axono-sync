@@ -17,7 +17,16 @@ Pro lokální spuštění naservírujte kořen repozitáře statickým HTTP serv
 - `axono-admin.html` – administrace
 - `axono-config.js` – společná veřejná konfigurace Supabase
 - `axono-client.js` – společný Supabase klient a přihlášení
+- `axono-logic.js` – čistá logika časomíry a trestů sdílená ovládáním a LIVE pohledem
 - `vercel.json` – veřejné routy a bezpečnostní HTTP hlavičky
+
+## Kontroly před nasazením
+
+```bash
+node tests/logic.test.js
+node tests/static.test.js
+git diff --check
+```
 
 Anon klíč Supabase je z principu veřejný. Bezpečnost dat proto musí zajišťovat Row Level Security a serverové ověření oprávnění, nikoli utajení tohoto klíče.
 
@@ -31,6 +40,6 @@ SQL pravidla nezapínejte před vytvořením účtu, jinak se do ovládání ned
 
 ## Další plánované kroky
 
-1. Oddělit sdílené styly a JavaScript z velkých HTML souborů.
-2. Doplnit spolehlivou synchronizaci trestů a ochranu proti souběžným zápisům.
-3. Upravit ovládací obrazovku pro rychlé použití během zápasu a doplnit PWA/offline režim.
+1. Dále oddělit aplikační JavaScript z velkých HTML souborů.
+2. Doplnit integrační testy proti samostatnému testovacímu projektu Supabase.
+3. Doplnit PWA/offline režim pro výpadek připojení během zápasu.

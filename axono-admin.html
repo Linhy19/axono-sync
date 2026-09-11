@@ -609,7 +609,8 @@ let matchesCache = [];
 
 async function loadMatches() {
   try {
-    const { data } = await sb.from('matches').select('*').order('scheduled_at', { ascending: false, nullsFirst: false }).order('created_at', { ascending: false });
+    const { data, error } = await sb.from('matches').select('*').order('scheduled_at', { ascending: false, nullsFirst: false }).order('created_at', { ascending: false });
+    if (error) throw error;
     matchesCache = data || [];
     renderMatchesTable();
     renderMatchStats();
@@ -638,9 +639,9 @@ function renderMatchesTable() {
       <td data-label="Část">${m.period <= 3 ? m.period+'. třetina' : m.period === 4 ? 'Prodl.' : 'Nájezdy'}</td>
       <td data-label="Akce">
         <div class="td-actions">
-          <button class="a-btn secondary small" onclick="openEditMatch('${m.id}')">✎ edit</button>
-          <button class="a-btn secondary small" onclick="copyLive('${m.code}')" style="color:var(--green);border-color:rgba(0,178,72,0.3);">● live</button>
-          <button class="a-btn danger small" onclick="deleteMatch('${m.id}','${m.code}')">✕</button>
+          <button class="a-btn secondary small" onclick="openEditMatch(${jsString(m.id)})">✎ edit</button>
+          <button class="a-btn secondary small" onclick="copyLive(${jsString(m.code)})" style="color:var(--green);border-color:rgba(0,178,72,0.3);">● live</button>
+          <button class="a-btn danger small" onclick="deleteMatch(${jsString(m.id)},${jsString(m.code)})">✕</button>
         </div>
       </td>
     </tr>`;
@@ -660,18 +661,26 @@ function renderMatchStats() {
 }
 
 async function createMatch() {
-  const teamA = document.getElementById('mTeamA').value || 'DOMÁCÍ';
-  const teamB = document.getElementById('mTeamB').value || 'HOSTÉ';
+  const teamAId = document.getElementById('mTeamA').value;
+  const teamBId = document.getElementById('mTeamB').value;
+  const teamA = teamsCache.find(team => String(team.id) === String(teamAId))?.name || 'DOMÁCÍ';
+  const teamB = teamsCache.find(team => String(team.id) === String(teamBId))?.name || 'HOSTÉ';
   const dateVal = document.getElementById('mDate').value;
   const scheduledAt = dateVal ? new Date(dateVal).toISOString() : null;
-  const code = generateCode();
   try {
-    const { error } = await sb.from('matches').insert({
-      code, team_a_name: teamA, team_b_name: teamB,
-      score_a: 0, score_b: 0, period: 1, clock_seconds: 1200,
-      scheduled_at: scheduledAt
-    });
-    if (error) throw error;
+    let code = '';
+    let created = false;
+    for (let attempt = 0; attempt < 5 && !created; attempt++) {
+      code = generateCode();
+      const { error } = await sb.from('matches').insert({
+        code, team_a_name: teamA, team_b_name: teamB,
+        score_a: 0, score_b: 0, period: 1, clock_seconds: 1200,
+        scheduled_at: scheduledAt
+      });
+      if (!error) created = true;
+      else if (error.code !== '23505') throw error;
+    }
+    if (!created) throw new Error('Nepodařilo se vytvořit unikátní kód zápasu.');
     toast(`✅ Zápas ${code} vytvořen`, 'ok');
     document.getElementById('mDate').value = '';
     await loadMatches();
@@ -679,7 +688,7 @@ async function createMatch() {
 }
 
 function openEditMatch(id) {
-  const m = matchesCache.find(x => x.id === id);
+  const m = matchesCache.find(x => String(x.id) === String(id));
   if (!m) return;
   document.getElementById('editMatchId').value = m.id;
   document.getElementById('editScoreA').value = m.score_a;
@@ -706,7 +715,7 @@ async function saveEditMatch() {
   const id = document.getElementById('editMatchId').value;
   const dateVal = document.getElementById('editMatchDate').value;
   try {
-    await sb.from('matches').update({
+    const result = await sb.from('matches').update({
       team_a_name: document.getElementById('editMatchTeamA').value,
       team_b_name: document.getElementById('editMatchTeamB').value,
       score_a: parseInt(document.getElementById('editScoreA').value) || 0,
@@ -714,6 +723,7 @@ async function saveEditMatch() {
       scheduled_at: dateVal ? new Date(dateVal).toISOString() : null,
       updated_at: new Date().toISOString()
     }).eq('id', id);
+    if (result.error) throw result.error;
     toast('✅ Zápas uložen', 'ok');
     closeModal('editMatchModal');
     await loadMatches();
@@ -722,9 +732,21 @@ async function saveEditMatch() {
 
 async function deleteMatch(id, code) {
   if (!confirm(`Smazat zápas ${code}? Smažou se i góly a tresty.`)) return;
-  await sb.from('matches').delete().eq('id', id);
-  toast(`🗑 Zápas ${code} smazán`);
-  await loadMatches();
+  try {
+    const children = await Promise.all([
+      sb.from('goals').delete().eq('match_id', id),
+      sb.from('penalties').delete().eq('match_id', id),
+      sb.from('players').delete().eq('match_id', id)
+    ]);
+    const childError = children.find(result => result.error)?.error;
+    if (childError) throw childError;
+    const { error } = await sb.from('matches').delete().eq('id', id);
+    if (error) throw error;
+    toast(`🗑 Zápas ${code} smazán`);
+    await loadMatches();
+  } catch (error) {
+    toast('Zápas se nepodařilo smazat: ' + error.message, 'err');
+  }
 }
 
 function copyLive(code) {
@@ -737,7 +759,8 @@ let teamsCache = [];
 
 async function loadTeams() {
   try {
-    const { data } = await sb.from('teams').select('*').order('name');
+    const { data, error } = await sb.from('teams').select('*').order('name');
+    if (error) throw error;
     teamsCache = data || [];
     renderTeamsList();
     populateTeamSelects();
@@ -748,9 +771,10 @@ function renderTeamsList() {
   const el = document.getElementById('teamsList');
   const active = teamsCache.filter(t => t.active);
   document.getElementById('teamCount').textContent = active.length;
-  if (!active.length) { el.innerHTML = '<div class="empty-msg">Žádné týmy.</div>'; return; }
-  el.innerHTML = active.map(t => `
-    <div style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:9px;border:1.5px solid var(--line);margin-bottom:5px;background:var(--bg);">
+  if (!teamsCache.length) { el.innerHTML = '<div class="empty-msg">Žádné týmy.</div>'; return; }
+  const sorted = [...teamsCache].sort((a, b) => Number(b.active) - Number(a.active) || a.name.localeCompare(b.name, 'cs'));
+  el.innerHTML = sorted.map(t => `
+    <div style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:9px;border:1.5px solid var(--line);margin-bottom:5px;background:var(--bg);opacity:${t.active ? 1 : 0.48};">
       <span class="color-swatch" style="background:${t.color||'#ccc'};"></span>
       <div style="flex:1;min-width:0;">
         <div style="font-weight:600;font-size:13px;">${esc(t.name)}${t.short?' <span style="color:var(--muted);font-weight:400;">('+esc(t.short)+')</span>':''}</div>
@@ -758,8 +782,8 @@ function renderTeamsList() {
         ${t.is_home ? `<div style="font-size:10px;color:var(--green);font-weight:600;">✓ NÁŠ TÝM</div>` : ''}
       </div>
       <div style="display:flex;gap:4px;">
-        <button class="a-btn secondary small" onclick="openEditTeam('${t.id}')">✎</button>
-        <button class="a-btn danger small" onclick="toggleTeam('${t.id}',false,'${esc(t.name)}')">✕</button>
+        ${t.active ? `<button class="a-btn secondary small" onclick="openEditTeam(${jsString(t.id)})">✎</button>` : ''}
+        <button class="a-btn ${t.active ? 'danger' : 'secondary'} small" onclick="toggleTeam(${jsString(t.id)},${!t.active},${jsString(t.name)})">${t.active ? '✕' : 'obnovit'}</button>
       </div>
     </div>
   `).join('');
@@ -788,8 +812,9 @@ async function addTeam() {
   const isHome = document.getElementById('tIsHome').checked;
   if (!name) { toast('Zadejte název týmu', 'err'); return; }
   try {
-    const { error } = await sb.from('teams').insert({ name, short: short||null, arena: arena||null, color, is_home: isHome, active: true });
+    const { data: created, error } = await sb.from('teams').insert({ name, short: short||null, arena: arena||null, color, is_home: false, active: true }).select('id').single();
     if (error) throw error;
+    if (isHome) await setHomeTeam(created.id);
     toast(`✅ Tým ${name} přidán`, 'ok');
     document.getElementById('tName').value = '';
     document.getElementById('tShort').value = '';
@@ -800,7 +825,7 @@ async function addTeam() {
 }
 
 function openEditTeam(id) {
-  const t = teamsCache.find(x => x.id === id);
+  const t = teamsCache.find(x => String(x.id) === String(id));
   if (!t) return;
   document.getElementById('editTeamId').value = t.id;
   document.getElementById('editTeamName').value = t.name;
@@ -816,29 +841,45 @@ async function saveEditTeam() {
   const name = document.getElementById('editTeamName').value.trim();
   if (!name) { toast('Zadejte název', 'err'); return; }
   try {
-    await sb.from('teams').update({
+    const isHome = document.getElementById('editTeamIsHome').checked;
+    const result = await sb.from('teams').update({
       name,
       short: document.getElementById('editTeamShort').value.trim().toUpperCase() || null,
       arena: document.getElementById('editTeamArena').value.trim() || null,
       color: document.getElementById('editTeamColor').value,
-      is_home: document.getElementById('editTeamIsHome').checked
+      is_home: false
     }).eq('id', id);
+    if (result.error) throw result.error;
+    if (isHome) await setHomeTeam(id);
     toast('✅ Tým uložen', 'ok');
     closeModal('editTeamModal');
     await loadTeams();
   } catch(e) { toast('Chyba: ' + e.message, 'err'); }
 }
 
+async function setHomeTeam(id) {
+  const clearResult = await sb.from('teams').update({ is_home: false }).neq('id', id).eq('is_home', true);
+  if (clearResult.error) throw clearResult.error;
+  const setResult = await sb.from('teams').update({ is_home: true }).eq('id', id);
+  if (setResult.error) throw setResult.error;
+}
+
 async function toggleTeam(id, active, name) {
-  if (!active) {
-    if (!confirm(`Smazat tým "${name}" trvale? Tato akce nelze vrátit.`)) return;
-    await sb.from('teams').delete().eq('id', id);
-    toast(`✕ Tým ${name} smazán`);
-  } else {
-    await sb.from('teams').update({ active: true }).eq('id', id);
-    toast(`✅ Tým ${name} obnoven`);
+  try {
+    if (!active) {
+      if (!confirm(`Skrýt tým "${name}"? Jeho historie zůstane zachovaná.`)) return;
+      const { error } = await sb.from('teams').update({ active: false }).eq('id', id);
+      if (error) throw error;
+      toast(`Tým ${name} skryt`);
+    } else {
+      const { error } = await sb.from('teams').update({ active: true }).eq('id', id);
+      if (error) throw error;
+      toast(`✅ Tým ${name} obnoven`, 'ok');
+    }
+    await loadTeams();
+  } catch (error) {
+    toast('Tým se nepodařilo změnit: ' + error.message, 'err');
   }
-  await loadTeams();
 }
 
 // ─── HRÁČI ────────────────────────────────────────────────────────────────────
@@ -872,8 +913,8 @@ function renderPlayersList() {
         <div style="font-weight:600;font-size:13px;display:flex;align-items:center;gap:6px;">${esc(p.name)}${p.is_captain?'<span class="role-badge">C</span>':''}${p.is_goalie?AxonoIcons.icon('goalie'):''}</div>
         <div style="font-size:10px;color:var(--muted);">${team ? esc(team.name) : '—'}</div>
       </div>
-      <button class="a-btn secondary small" onclick="openEditPlayer('${p.id}')">✎</button>
-      <button class="a-btn danger small" onclick="deletePlayer('${p.id}','${esc(p.name)}')">✕</button>
+      <button class="a-btn secondary small" onclick="openEditPlayer(${jsString(p.id)})">✎</button>
+      <button class="a-btn danger small" onclick="deletePlayer(${jsString(p.id)},${jsString(p.name)})">✕</button>
     </div>`;
   }).join('');
 }
@@ -908,13 +949,16 @@ async function addPlayer() {
 
 async function deletePlayer(id, name) {
   if (!confirm(`Smazat hráče "${name}"?`)) return;
-  await sb.from('club_roster').delete().eq('id', id);
-  toast(`✕ ${name} smazán`);
-  await loadPlayers();
+  try {
+    const { error } = await sb.from('club_roster').delete().eq('id', id);
+    if (error) throw error;
+    toast(`✕ ${name} smazán`);
+    await loadPlayers();
+  } catch (error) { toast('Hráče se nepodařilo smazat: ' + error.message, 'err'); }
 }
 
 function openEditPlayer(id) {
-  const p = playersCache.find(x => x.id === id);
+  const p = playersCache.find(x => String(x.id) === String(id));
   if (!p) return;
   document.getElementById('editPlayerId').value = p.id;
   document.getElementById('editPlayerNum').value = p.num || '';
@@ -936,13 +980,14 @@ async function saveEditPlayer() {
   const name = document.getElementById('editPlayerName').value.trim();
   if (!name) { toast('Zadejte jméno', 'err'); return; }
   try {
-    await sb.from('club_roster').update({
+    const result = await sb.from('club_roster').update({
       num: document.getElementById('editPlayerNum').value.trim() || null,
       name,
       is_captain: document.getElementById('editPlayerCap').checked,
       is_goalie: document.getElementById('editPlayerGoalie').checked,
       team_id: document.getElementById('editPlayerTeam').value || null
     }).eq('id', id);
+    if (result.error) throw result.error;
     toast('✅ Hráč uložen', 'ok');
     closeModal('editPlayerModal');
     await loadPlayers();
@@ -956,6 +1001,8 @@ async function loadStats() {
       sb.from('teams').select('id', { count: 'exact', head: true }).eq('active', true),
       sb.from('club_roster').select('id', { count: 'exact', head: true })
     ]);
+    const firstError = [m, t, p].find(result => result.error)?.error;
+    if (firstError) throw firstError;
     document.getElementById('totalMatches').textContent = m.count ?? '—';
     document.getElementById('totalTeams').textContent = t.count ?? '—';
     document.getElementById('totalPlayers').textContent = p.count ?? '—';
@@ -966,6 +1013,10 @@ async function loadStats() {
 
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
 function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function jsString(value) {
+  return JSON.stringify(String(value))
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
 
 function generateCode() {
   const a = 'ABCDEFGHJKLMNPQRSTUVWXYZ', n = '23456789';

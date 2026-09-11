@@ -334,7 +334,7 @@
     <div class="connect-label">Zadejte kód zápasu</div>
     <input class="connect-input" id="codeInput" placeholder="ABC-234" maxlength="7"
       onkeydown="if(event.key==='Enter') connectToMatch()" />
-    <button class="connect-btn" onclick="connectToMatch()">▶ SLEDOVAT ŽIVĚ</button>
+    <button id="connectButton" class="connect-btn" onclick="connectToMatch()">▶ SLEDOVAT ŽIVĚ</button>
     <div class="connect-error" id="connectError"></div>
   </div>
 </div>
@@ -431,6 +431,7 @@
 <script src="/supabase.min.js"></script>
 <script src="/axono-config.js"></script>
 <script src="/axono-client.js"></script>
+<script src="/axono-logic.js"></script>
 <script src="/axono-icons.js"></script>
 <script>
 // ─── CONFIG ───────────────────────────────────────────────────────────────────
@@ -446,6 +447,7 @@ let state = {
   clock: { seconds: 1200, running: false, interval: null, startedAt: null, startSeconds: 1200 }
 };
 let realtimeChannel = null;
+let loadRequest = 0;
 
 // ─── CONNECT ─────────────────────────────────────────────────────────────────
 async function connectToMatch() {
@@ -453,6 +455,7 @@ async function connectToMatch() {
   let code = raw;
   if (raw.length === 6 && !raw.includes('-')) code = raw.slice(0,3)+'-'+raw.slice(3);
   const errEl = document.getElementById('connectError');
+  const button = document.getElementById('connectButton');
   errEl.style.display = 'none';
   if (!code) return;
 
@@ -463,11 +466,15 @@ async function connectToMatch() {
   }
 
   try {
+    button.disabled = true;
+    button.textContent = 'PŘIPOJUJI…';
     let data = null;
     const res1 = await sb.from('matches').select('*').eq('code', code).maybeSingle();
+    if (res1.error) throw res1.error;
     if (res1.data) { data = res1.data; }
     if (!data && raw.length === 6) {
       const res2 = await sb.from('matches').select('*').ilike('code', `${raw.slice(0,3)}%${raw.slice(3)}`).maybeSingle();
+      if (res2.error) throw res2.error;
       if (res2.data) { data = res2.data; code = data.code; }
     }
     if (!data) {
@@ -484,25 +491,34 @@ async function connectToMatch() {
     errEl.textContent = '❌ Chyba připojení: ' + e.message;
     errEl.style.display = 'block';
     console.error(e);
+  } finally {
+    button.disabled = false;
+    button.textContent = '▶ SLEDOVAT ŽIVĚ';
   }
 }
 
 async function loadAndWatch(matchId, code) {
+  const request = ++loadRequest;
+  const [matchResult, goalsResult, pensResult] = await Promise.all([
+    sb.from('matches').select('*').eq('id', matchId).single(),
+    sb.from('goals').select('*').eq('match_id', matchId).order('created_at'),
+    sb.from('penalties').select('*').eq('match_id', matchId).order('created_at')
+  ]);
+  const { data: match, error: matchError } = matchResult;
+  if (matchError || !match) throw matchError || new Error('Zápas nebyl nalezen.');
+  if (goalsResult.error) throw goalsResult.error;
+  if (pensResult.error) throw pensResult.error;
+  if (request !== loadRequest) return false;
+
   state.matchId = matchId;
   state.code = code;
   document.getElementById('dCode').textContent = code;
+  applyMatch(match);
 
-  // Load match
-  const { data: match } = await sb.from('matches').select('*').eq('id', matchId).single();
-  if (match) applyMatch(match);
-
-  // Load goals
-  const { data: goals } = await sb.from('goals').select('*').eq('match_id', matchId).order('created_at');
-  if (goals) { state.goals = goals; renderGoals(); renderStats(); }
-
-  // Load penalties
-  const { data: pens } = await sb.from('penalties').select('*').eq('match_id', matchId).order('created_at');
-  if (pens) { state.penalties = pens; renderActivePens(); }
+  state.goals = goalsResult.data || [];
+  renderGoals(); renderStats();
+  state.penalties = AxonoLogic.penaltiesAtSnapshot(pensResult.data || [], match);
+  renderActivePens(); renderPenBadges(); renderStats();
 
   // Show display screen
   document.getElementById('connectScreen').style.display = 'none';
@@ -510,10 +526,12 @@ async function loadAndWatch(matchId, code) {
 
   // Subscribe realtime
   subscribeRealtime(matchId);
+  return true;
 }
 
 // ─── APPLY MATCH STATE ────────────────────────────────────────────────────────
 function applyMatch(match) {
+  state.matchSnapshot = match;
   const prevA = state.teamA, prevB = state.teamB;
   state.teamA = match.score_a;
   state.teamB = match.score_b;
@@ -548,7 +566,9 @@ async function applyArena(match) {
   try {
     const teamName = match.team_a_name;
     if (!teamName || teamName === 'DOMÁCÍ') { row.style.display = 'none'; return; }
+    const requestedTeam = teamName;
     const { data } = await sb.from('teams').select('arena').eq('name', teamName).single();
+    if (document.getElementById('dTeamA').textContent !== requestedTeam.toUpperCase()) return;
     if (data?.arena) {
       // Přidat datum zápasu pokud existuje
       let info = data.arena;
@@ -598,12 +618,16 @@ function applyBreakOnDisplay(match) {
 
 function applyClockFromMatch(match) {
   clearInterval(state.clock.interval);
-  state.clock.running = false;
   state.clock.interval = null;
 
-  if (match.clock_running && match.clock_started_at) {
-    state.clock.startedAt = new Date(match.clock_started_at).getTime();
-    state.clock.startSeconds = Number(match.clock_seconds) || 0;
+  const fallback = match.period >= 4 ? 5*60 : 20*60;
+  const snapshot = AxonoLogic.clockSnapshot(match, Date.now(), fallback);
+  state.clock.seconds = snapshot.seconds;
+  state.clock.running = snapshot.running;
+  state.clock.startedAt = snapshot.startedAt;
+  state.clock.startSeconds = snapshot.startSeconds;
+
+  if (snapshot.running) {
     const tick = () => {
       const previous = state.clock.seconds;
       const elapsed = Math.floor((Date.now() - state.clock.startedAt) / 1000);
@@ -618,17 +642,8 @@ function applyClockFromMatch(match) {
         renderClock();
       }
     };
-    const elapsed = Math.floor((Date.now() - state.clock.startedAt) / 1000);
-    state.clock.seconds = Math.max(0, state.clock.startSeconds - elapsed);
-    state.clock.running = state.clock.seconds > 0;
-    if (state.clock.running) {
-      tick();
-      if (state.clock.running) state.clock.interval = setInterval(tick, 250);
-    }
-  } else {
-    state.clock.seconds = match.clock_seconds ?? state.clock.seconds;
-    state.clock.startedAt = null;
-    state.clock.startSeconds = state.clock.seconds;
+    tick();
+    if (state.clock.running) state.clock.interval = setInterval(tick, 250);
   }
   renderClock();
 }
@@ -731,7 +746,7 @@ function renderStats() {
   state.penalties.forEach(p => {
     if (p.player) {
       if (!map[p.player]) map[p.player] = { name: p.player, team: p.team_name, goals:0, assists:0, pens:0 };
-      map[p.player].pens++;
+      map[p.player].pens += Number(p.mins) || 0;
     }
   });
   const sorted = Object.values(map).sort((a,b) => (b.goals+b.assists) - (a.goals+a.assists));
@@ -758,9 +773,10 @@ function renderStats() {
 function subscribeRealtime(matchId) {
   if (realtimeChannel) sb.removeChannel(realtimeChannel);
   realtimeChannel = sb.channel(`display-${matchId}`)
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'matches', filter: `id=eq.${matchId}` }, (payload) => {
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'matches', filter: `id=eq.${matchId}` }, async (payload) => {
       const data = payload.new;
-      if (!data) return;
+      if (!data || state.matchId !== matchId) return;
+      const wasRunning = Boolean(state.matchSnapshot?.clock_running);
       const prevA = state.teamA, prevB = state.teamB;
       if (data.score_a > prevA || data.score_b > prevB) {
         const teamName = data.score_a > prevA
@@ -769,14 +785,26 @@ function subscribeRealtime(matchId) {
         showToast(`⚡ GÓL — ${teamName}!`, true);
       }
       applyMatch(data);
+      // Při zastavení znovu načíst uložené zbytky trestů. Události z různých
+      // tabulek mohou dorazit v opačném pořadí a nesmí se odečíst čas dvakrát.
+      if (wasRunning && !data.clock_running) {
+        const { data: penalties, error } = await sb.from('penalties').select('*').eq('match_id', matchId).order('created_at');
+        if (!error && penalties && state.matchId === matchId) {
+          state.penalties = AxonoLogic.penaltiesAtSnapshot(penalties, data);
+          renderActivePens(); renderPenBadges(); renderStats();
+        }
+      }
     })
     .on('postgres_changes', { event: '*', schema: 'public', table: 'goals', filter: `match_id=eq.${matchId}` }, async () => {
-      const { data } = await sb.from('goals').select('*').eq('match_id', matchId).order('created_at');
-      if (data) { state.goals = data; renderGoals(); renderStats(); }
+      const { data, error } = await sb.from('goals').select('*').eq('match_id', matchId).order('created_at');
+      if (!error && data && state.matchId === matchId) { state.goals = data; renderGoals(); renderStats(); }
     })
     .on('postgres_changes', { event: '*', schema: 'public', table: 'penalties', filter: `match_id=eq.${matchId}` }, async () => {
-      const { data } = await sb.from('penalties').select('*').eq('match_id', matchId).order('created_at');
-      if (data) { state.penalties = data; renderActivePens(); renderPenBadges(); }
+      const { data, error } = await sb.from('penalties').select('*').eq('match_id', matchId).order('created_at');
+      if (!error && data && state.matchId === matchId) {
+        state.penalties = AxonoLogic.penaltiesAtSnapshot(data, state.matchSnapshot || {});
+        renderActivePens(); renderPenBadges(); renderStats();
+      }
     })
     .subscribe(status => {
       const dot = document.getElementById('dSyncDot');
