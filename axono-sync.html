@@ -36,7 +36,37 @@
       radial-gradient(ellipse 60% 30% at 50% 0%, rgba(209,0,32,0.05) 0%, transparent 60%);
     pointer-events: none; z-index: 0;
   }
-  .app { position: relative; z-index: 1; max-width: 480px; margin: 0 auto; padding: 12px 14px 30px; }
+  .app { display: none; position: relative; z-index: 1; max-width: 480px; margin: 0 auto; padding: 12px 14px 30px; }
+  .app.authenticated { display: block; }
+
+  .operator-login {
+    position: relative; z-index: 2; min-height: 100vh; padding: 24px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .operator-login.hidden { display: none; }
+  .operator-login-card {
+    width: 100%; max-width: 360px; background: var(--surface);
+    border: 1.5px solid var(--line); border-radius: 20px; padding: 26px;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.1);
+  }
+  .operator-login-logo { width: min(250px, 70vw); display: block; margin: 0 auto 4px; }
+  .operator-login-title {
+    font-family: 'Bebas Neue', sans-serif; color: var(--red); text-align: center;
+    font-size: 15px; letter-spacing: 5px; margin-bottom: 22px;
+  }
+  .operator-login-field {
+    width: 100%; padding: 13px 14px; margin-bottom: 10px; border: 1.5px solid var(--line);
+    border-radius: 10px; background: var(--bg); color: var(--dark); outline: none;
+    font-family: 'Inter', sans-serif; font-size: 14px;
+  }
+  .operator-login-field:focus { border-color: var(--red); background: #fff; }
+  .operator-login-btn {
+    width: 100%; padding: 13px; border: 0; border-radius: 10px; cursor: pointer;
+    background: var(--red); color: #fff; font-family: 'Bebas Neue', sans-serif;
+    font-size: 16px; letter-spacing: 3px; box-shadow: 0 4px 16px var(--red-glow);
+  }
+  .operator-login-btn:disabled { opacity: 0.6; cursor: wait; }
+  .operator-login-error { display: none; margin-top: 10px; color: var(--red); text-align: center; font-size: 13px; }
 
   /* HEADER */
   header { text-align: center; padding: 16px 0 4px; position: relative; }
@@ -453,8 +483,20 @@
   .break-btn.edit-time { background: transparent; color: rgba(255,255,255,0.5); border: 1px solid rgba(255,255,255,0.15); font-size: 11px; }
   .break-btn:hover { filter: brightness(1.2); }
 </style>
+<link rel="stylesheet" href="/axono-ui.css">
 </head>
 <body>
+<div class="operator-login" id="operatorLogin">
+  <div class="operator-login-card">
+    <img class="operator-login-logo" src="/logo.png" alt="AXONO">
+    <div class="operator-login-title">OVLÁDÁNÍ ZÁPASU</div>
+    <input class="operator-login-field" id="operatorEmail" type="email" placeholder="E-mail" autocomplete="username">
+    <input class="operator-login-field" id="operatorPassword" type="password" placeholder="Heslo" autocomplete="current-password"
+      onkeydown="if(event.key==='Enter') signInOperator()">
+    <button class="operator-login-btn" id="operatorLoginButton" onclick="signInOperator()">PŘIHLÁSIT</button>
+    <div class="operator-login-error" id="operatorLoginError">Přihlášení se nezdařilo.</div>
+  </div>
+</div>
 <div class="app">
 
   <!-- SIDEBAR OVERLAY -->
@@ -464,7 +506,7 @@
   <div class="sidebar" id="sidebar">
     <div class="sidebar-header">
       <div class="sidebar-title">ZÁPASY</div>
-      <button class="sidebar-close" onclick="closeSidebar()">✕</button>
+      <button class="sidebar-close" onclick="closeSidebar()" title="Zavřít seznam zápasů" aria-label="Zavřít seznam zápasů">✕</button>
     </div>
     <div class="sidebar-body">
       <button class="sidebar-new-btn" onclick="openNewMatchModal()">➕ NOVÝ ZÁPAS</button>
@@ -496,16 +538,16 @@
   </div>
 
   <header>
-    <button class="sidebar-open-btn" id="sidebarOpenBtn" onclick="openSidebar()" style="position:absolute;left:0;top:50%;transform:translateY(-50%);background:var(--bg);border:1.5px solid var(--line);border-radius:8px;padding:7px 11px;cursor:pointer;font-size:16px;color:var(--dark);">☰</button>
+    <button class="sidebar-open-btn" id="sidebarOpenBtn" onclick="openSidebar()" title="Otevřít seznam zápasů" aria-label="Otevřít seznam zápasů" style="position:absolute;left:0;top:50%;transform:translateY(-50%);background:var(--bg);border:1.5px solid var(--line);border-radius:8px;padding:7px 11px;cursor:pointer;font-size:16px;color:var(--dark);">☰</button>
     <div class="axono-logo">
       <img src="/logo.png" alt="AXONO" onerror="this.outerHTML='<span style=\'font-family:Bebas Neue,sans-serif;font-size:32px;letter-spacing:6px;color:var(--dark)\'>AXONO</span>'">
     </div>
     <div class="sync-badge">SYNC</div>
-    <div id="saveIndicator" style="opacity:0;transition:opacity 0.4s;font-size:10px;color:var(--green);font-family:'Inter',sans-serif;font-weight:600;letter-spacing:1px;margin-top:2px;">✓ uloženo</div>
+    <div id="saveIndicator" aria-live="polite" style="opacity:0;transition:opacity 0.4s;font-size:10px;color:var(--green);font-family:'Inter',sans-serif;font-weight:600;letter-spacing:1px;margin-top:2px;">✓ uloženo</div>
   </header>
 
   <!-- SESSION BAR -->
-  <div id="sessionBar" style="background:#1a1a1a;border-radius:12px;padding:12px 16px;margin:12px 0;display:flex;align-items:center;gap:10px;flex-wrap:wrap;box-shadow:0 4px 16px rgba(0,0,0,0.12);">
+  <div id="sessionBar" class="session-bar" style="background:#1a1a1a;border-radius:12px;padding:12px 16px;margin:12px 0;display:flex;align-items:center;gap:10px;flex-wrap:wrap;box-shadow:0 4px 16px rgba(0,0,0,0.12);">
     <div id="sessionStatus" style="flex:1;min-width:160px;">
       <div style="font-family:'Bebas Neue',sans-serif;font-size:11px;letter-spacing:2px;color:#666;margin-bottom:2px;">KÓD ZÁPASU</div>
       <div style="display:flex;align-items:center;gap:8px;">
@@ -517,7 +559,11 @@
       <button onclick="showJoinDialog()" style="background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:7px;color:#fff;font-family:'Bebas Neue',sans-serif;font-size:13px;letter-spacing:1px;padding:8px 14px;cursor:pointer;">🔗 PŘIPOJIT SE</button>
       <button id="copyLiveBtn" onclick="copyLiveLink()" style="display:none;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:7px;color:#4cff8f;font-family:'Bebas Neue',sans-serif;font-size:13px;letter-spacing:1px;padding:8px 14px;cursor:pointer;" title="Zkopírovat odkaz na LIVE stránku">● LIVE ODKAZ</button>
     </div>
-    <div id="syncDot" style="width:8px;height:8px;border-radius:50%;background:#444;flex-shrink:0;" title="Stav připojení"></div>
+    <div class="sync-state" role="status" aria-live="polite">
+      <div id="syncDot" style="width:8px;height:8px;border-radius:50%;background:#444;flex-shrink:0;" title="Stav připojení"></div>
+      <span id="syncStatusText" class="sync-status-text">Nepřipojeno</span>
+    </div>
+    <button class="operator-logout" onclick="logoutOperator()" style="background:transparent;border:0;color:#777;font-family:'Inter',sans-serif;font-size:11px;cursor:pointer;padding:5px;">Odhlásit</button>
   </div>
 
   <!-- JOIN DIALOG -->
@@ -534,15 +580,15 @@
   <div class="clock-bar">
     <div class="period-block">
       <div class="period-nav">
-        <button class="pnav-btn" onclick="changePeriod(-1)">◀</button>
-        <button class="pnav-btn" onclick="changePeriod(1)">▶</button>
+        <button class="pnav-btn" onclick="changePeriod(-1)" title="Předchozí třetina" aria-label="Předchozí třetina">◀</button>
+        <button class="pnav-btn" onclick="changePeriod(1)" title="Další třetina" aria-label="Další třetina">▶</button>
       </div>
       <div class="period-label" id="periodDisplay">TŘETINA 1</div>
     </div>
     <div class="clock-display" id="clockDisplay">20:00</div>
     <div class="clock-controls">
       <button class="clock-btn start" id="clockStartBtn" onclick="toggleClock()">▶ START</button>
-      <button class="clock-btn reset-c" onclick="resetClock()">↺</button>
+      <button class="clock-btn reset-c" onclick="resetClock()" title="Nastavit výchozí čas" aria-label="Nastavit výchozí čas">↺</button>
     </div>
   </div>
 
@@ -571,8 +617,8 @@
       </div>
       <div class="score-display" id="scoreA">0</div>
       <div class="score-controls">
-        <button class="score-btn minus" onclick="adjustScore('A',-1)">−</button>
-        <button class="score-btn plus" onclick="adjustScore('A',1)">+</button>
+        <button class="score-btn minus" onclick="adjustScore('A',-1)" aria-label="Odebrat gól domácím">−</button>
+        <button class="score-btn plus" onclick="adjustScore('A',1)" aria-label="Přidat gól domácím">+</button>
       </div>
       <div class="pen-badges" id="penBadgesA"></div>
     </div>
@@ -590,21 +636,21 @@
       </div>
       <div class="score-display" id="scoreB">0</div>
       <div class="score-controls">
-        <button class="score-btn minus" onclick="adjustScore('B',-1)">−</button>
-        <button class="score-btn plus" onclick="adjustScore('B',1)">+</button>
+        <button class="score-btn minus" onclick="adjustScore('B',-1)" aria-label="Odebrat gól hostům">−</button>
+        <button class="score-btn plus" onclick="adjustScore('B',1)" aria-label="Přidat gól hostům">+</button>
       </div>
       <div class="pen-badges" id="penBadgesB"></div>
     </div>
   </div>
 
   <!-- ZÁLOŽKY -->
-  <div class="tabs">
-    <button class="tab active" onclick="switchTab('gol')">⚽ Góly</button>
-    <button class="tab" onclick="switchTab('pen')">🚫 Tresty</button>
-    <button class="tab" onclick="switchTab('roster')">👥 Hráči</button>
-    <button class="tab" onclick="switchTab('tymy')">🏒 Týmy</button>
-    <button class="tab" onclick="switchTab('prehled')">📋 Přehled</button>
-    <button class="tab" onclick="switchTab('stats')">📊 Statistiky</button>
+  <div class="tabs" role="tablist" aria-label="Část zápasu">
+    <button class="tab active" role="tab" aria-selected="true" onclick="switchTab('gol')">⚽ Góly</button>
+    <button class="tab" role="tab" aria-selected="false" onclick="switchTab('pen')">🚫 Tresty</button>
+    <button class="tab" role="tab" aria-selected="false" onclick="switchTab('roster')">👥 Hráči</button>
+    <button class="tab" role="tab" aria-selected="false" onclick="switchTab('tymy')">🏒 Týmy</button>
+    <button class="tab" role="tab" aria-selected="false" onclick="switchTab('prehled')">📋 Přehled</button>
+    <button class="tab" role="tab" aria-selected="false" onclick="switchTab('stats')">📊 Statistiky</button>
   </div>
 
   <!-- GÓL TAB -->
@@ -615,18 +661,30 @@
         <button class="team-opt active" id="goalOptA" onclick="selectGoalTeam('A')">DOMÁCÍ</button>
         <button class="team-opt" id="goalOptB" onclick="selectGoalTeam('B')">HOSTÉ</button>
       </div>
-      <div class="form-row" style="align-items:center;gap:8px;">
-        <input class="field" id="scorerNumQuick" placeholder="# střelce" type="number" min="1" max="99" style="max-width:90px;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:16px;" />
-        <span style="color:var(--muted);font-size:12px;flex-shrink:0;">nebo ze soupravy:</span>
-        <select class="field" id="scorerSelect" style="flex:1;"></select>
+      <div class="player-pick-row">
+        <label class="player-pick-field player-pick-number">
+          <span class="player-pick-label">Číslo střelce</span>
+          <input class="field" id="scorerNumQuick" placeholder="#" type="number" min="1" max="99" inputmode="numeric" />
+        </label>
+        <span class="player-pick-or" aria-hidden="true">nebo</span>
+        <label class="player-pick-field">
+          <span class="player-pick-label">Ze soupisky</span>
+          <select class="field" id="scorerSelect"></select>
+        </label>
       </div>
-      <div class="form-row" style="align-items:center;gap:8px;">
-        <input class="field" id="assistNumQuick" placeholder="# asistence" type="number" min="1" max="99" style="max-width:90px;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:16px;" />
-        <span style="color:var(--muted);font-size:12px;flex-shrink:0;">nebo ze soupravy:</span>
-        <select class="field" id="assistSelect" style="flex:1;"></select>
+      <div class="player-pick-row">
+        <label class="player-pick-field player-pick-number">
+          <span class="player-pick-label">Číslo asistence</span>
+          <input class="field" id="assistNumQuick" placeholder="#" type="number" min="1" max="99" inputmode="numeric" />
+        </label>
+        <span class="player-pick-or" aria-hidden="true">nebo</span>
+        <label class="player-pick-field">
+          <span class="player-pick-label">Ze soupisky</span>
+          <select class="field" id="assistSelect"></select>
+        </label>
       </div>
       <input class="field" id="golMinuta" placeholder="Minuta (volitelné)" type="number" min="0" max="99" />
-      <button class="submit-btn" onclick="addGoal()">🏒 ZAPSAT GÓL</button>
+      <button class="submit-btn" id="goalSubmitButton" onclick="addGoal()">🏒 ZAPSAT GÓL</button>
     </div>
   </div>
 
@@ -636,12 +694,18 @@
     <div class="form-stack">
       <div class="team-selector">
         <button class="team-opt active" id="penOptA" onclick="selectPenTeam('A')">DOMÁCÍ</button>
-        <button class="team-opt red active" id="penOptB" onclick="selectPenTeam('B')">HOSTÉ</button>
+        <button class="team-opt red" id="penOptB" onclick="selectPenTeam('B')">HOSTÉ</button>
       </div>
-      <div class="form-row" style="align-items:center;gap:8px;">
-        <input class="field" id="penNumQuick" placeholder="# hráče" type="number" min="1" max="99" style="max-width:90px;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:16px;" />
-        <span style="color:var(--muted);font-size:12px;flex-shrink:0;">nebo ze soupravy:</span>
-        <select class="field" id="penPlayerSelect" style="flex:1;"></select>
+      <div class="player-pick-row">
+        <label class="player-pick-field player-pick-number">
+          <span class="player-pick-label">Číslo hráče</span>
+          <input class="field" id="penNumQuick" placeholder="#" type="number" min="1" max="99" inputmode="numeric" />
+        </label>
+        <span class="player-pick-or" aria-hidden="true">nebo</span>
+        <label class="player-pick-field">
+          <span class="player-pick-label">Ze soupisky</span>
+          <select class="field" id="penPlayerSelect"></select>
+        </label>
       </div>
       <div class="form-row">
         <select class="field" id="penType">
@@ -653,7 +717,7 @@
         <input class="field" id="penMinuta" placeholder="Min." type="number" min="0" max="99" style="max-width:72px;" />
       </div>
       <input class="field" id="penReason" placeholder="Důvod trestu (volitelné)" />
-      <button class="submit-btn red-btn" onclick="addPenalty()">🚫 ZAPSAT TREST</button>
+      <button class="submit-btn red-btn" id="penaltySubmitButton" onclick="addPenalty()">🚫 ZAPSAT TREST</button>
     </div>
     <div style="margin-top:13px;">
       <div class="section-header">
@@ -666,7 +730,7 @@
   <!-- HRÁČI TAB -->
   <div class="section tab-content" id="tab-roster">
     <div style="background:var(--bg);border:1.5px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:12px;display:flex;align-items:center;gap:10px;">
-      <span style="font-size:18px;">🔒</span>
+      <span class="inline-icon-text" style="font-size:18px;">🔒</span>
       <div style="font-size:12px;color:var(--muted);font-family:'Inter',sans-serif;line-height:1.5;">
         Správa soupisek je v <strong style="color:var(--dark);">AXONO ADMIN</strong>. Zde můžeš soupisku jen načíst a zobrazit.<br>
         <a href="/axono-admin.html" target="_blank" style="color:var(--red);font-weight:600;text-decoration:none;">Otevřít Admin →</a>
@@ -702,7 +766,7 @@
   <!-- TÝMY TAB -->
   <div class="section tab-content" id="tab-tymy">
     <div style="background:var(--bg);border:1.5px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:14px;display:flex;align-items:center;gap:10px;">
-      <span style="font-size:18px;">🔒</span>
+      <span class="inline-icon-text" style="font-size:18px;">🔒</span>
       <div style="font-size:12px;color:var(--muted);font-family:'Inter',sans-serif;line-height:1.5;">
         Přidávání a editace týmů je v <strong style="color:var(--dark);">AXONO ADMIN</strong>.<br>
         <a href="/axono-admin.html" target="_blank" style="color:var(--red);font-weight:600;text-decoration:none;">Otevřít Admin →</a>
@@ -727,7 +791,7 @@
         <div class="entry-list" id="eventLog"><div class="empty-msg">Žádné události. Zápas začíná!</div></div>
         <!-- Čas přestávek -->
         <div id="breakSummary" style="display:none;margin-top:10px;padding:8px 12px;background:var(--bg);border:1.5px solid var(--line);border-radius:9px;border-left:3px solid var(--warn);display:flex;align-items:center;justify-content:space-between;">
-          <span style="font-size:12px;color:var(--muted);font-family:'Inter',sans-serif;">⏸ Celkový čas přestávek</span>
+          <span class="inline-icon-text" style="font-size:12px;color:var(--muted);font-family:'Inter',sans-serif;">⏸ Celkový čas přestávek</span>
           <span id="breakTotalDisplay" style="font-family:'Bebas Neue',sans-serif;font-size:18px;color:var(--warn);">0:00</span>
         </div>
       </div>
@@ -749,22 +813,99 @@
     <button class="ctrl-btn danger" onclick="resetGame()">↺ Reset</button>
   </div>
 </div>
-<div class="toast" id="toast"></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<div class="undo-bar" id="undoBar" role="status" aria-live="polite" aria-hidden="true">
+  <span id="undoMessage">Akce byla uložena</span>
+  <button class="undo-button" onclick="undoLastAction()">↶ VRÁTIT</button>
+</div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="/supabase.min.js"></script>
+<script src="/axono-config.js"></script>
+<script src="/axono-client.js"></script>
+<script src="/axono-logic.js"></script>
+<script src="/axono-icons.js"></script>
 <script>
 
 // ─── SUPABASE CONFIG ─────────────────────────────────────────────────────────
-// 👉 Sem vložte vaše údaje ze Supabase (Project Settings → API)
-const SUPABASE_URL = 'https://wdwmjjbcphntymodnbub.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indkd21qamJjcGhudHltb2RuYnViIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMyMjk0NDQsImV4cCI6MjA4ODgwNTQ0NH0.5Er4or14JJZveXexxO7XCaRIhguZ3FHuLWDJbyzB0oU';
+const sb = window.axonoSupabase;
 
-const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+// ─── AUTH ─────────────────────────────────────────────────────────────────────
+let operatorInitialized = false;
+
+async function signInOperator() {
+  const email = document.getElementById('operatorEmail').value.trim();
+  const password = document.getElementById('operatorPassword').value;
+  const button = document.getElementById('operatorLoginButton');
+  const errorEl = document.getElementById('operatorLoginError');
+  if (!email || !password) {
+    errorEl.textContent = 'Vyplňte e-mail a heslo.';
+    errorEl.style.display = 'block';
+    return;
+  }
+
+  button.disabled = true;
+  button.textContent = 'PŘIHLAŠUJI…';
+  errorEl.style.display = 'none';
+  try {
+    const session = await window.AxonoAuth.signIn(email, password);
+    await showOperatorApp(session);
+    document.getElementById('operatorPassword').value = '';
+  } catch(e) {
+    errorEl.textContent = 'Nesprávný e-mail nebo heslo.';
+    errorEl.style.display = 'block';
+  } finally {
+    button.disabled = false;
+    button.textContent = 'PŘIHLÁSIT';
+  }
+}
+
+async function showOperatorApp(session) {
+  if (!session) return showOperatorLogin();
+  document.getElementById('operatorLogin').classList.add('hidden');
+  document.querySelector('.app').classList.add('authenticated');
+  if (!operatorInitialized) {
+    operatorInitialized = true;
+    await initOperatorApp();
+  }
+}
+
+function showOperatorLogin() {
+  if (state.clock?.interval) clearInterval(state.clock.interval);
+  state.clock.running = false;
+  state.clock.interval = null;
+  if (realtimeChannel) {
+    sb.removeChannel(realtimeChannel);
+    realtimeChannel = null;
+  }
+  document.getElementById('operatorLogin').classList.remove('hidden');
+  document.querySelector('.app').classList.remove('authenticated');
+  operatorInitialized = false;
+}
+
+async function logoutOperator() {
+  if (state.clock.running) {
+    stopClockLocal();
+    await Promise.all([syncActivePenalties(), syncClockToDb()]);
+  }
+  try { await window.AxonoAuth.signOut(); }
+  finally { showOperatorLogin(); }
+}
 
 // ─── MATCH SESSION ────────────────────────────────────────────────────────────
 let currentMatchId = null;
 let currentMatchCode = null;
 let realtimeChannel = null;
+let loadMatchRequest = 0;
+let matchWriteQueue = Promise.resolve();
+
+function enqueueMatchUpdate(matchId, update) {
+  const write = async () => {
+    const { error } = await sb.from('matches').update(update).eq('id', matchId);
+    if (error) throw error;
+  };
+  matchWriteQueue = matchWriteQueue.catch(() => {}).then(write);
+  return matchWriteQueue;
+}
 
 // Generate a short human-readable match code
 function generateMatchCode() {
@@ -782,7 +923,7 @@ let state = {
   goalTeam: 'A', penTeam: 'A', rosterTeam: 'A',
   goalId: 0, penId: 0, playerId: 0,
   rosters: { A: [], B: [] },
-  clock: { seconds: 20*60, running: false, interval: null }
+  clock: { seconds: 20*60, running: false, interval: null, startedAt: null, startSeconds: 20*60 }
 };
 const PERIODS = ['','TŘETINA 1','TŘETINA 2','TŘETINA 3','PRODLOUŽENÍ','NÁJEZDY'];
 
@@ -793,43 +934,69 @@ const PERIODS = ['','TŘETINA 1','TŘETINA 2','TŘETINA 3','PRODLOUŽENÍ','NÁJ
 
 function toggleClock() { state.clock.running ? stopClock() : startClock(); }
 
+function getClockSecondsNow() {
+  if (!state.clock.running || !state.clock.startedAt) return state.clock.seconds;
+  const elapsed = Math.floor((Date.now() - state.clock.startedAt) / 1000);
+  return Math.max(0, state.clock.startSeconds - elapsed);
+}
+
+function tickClock() {
+  const previous = state.clock.seconds;
+  state.clock.seconds = getClockSecondsNow();
+  renderClock();
+  const delta = Math.max(0, previous - state.clock.seconds);
+  if (delta) tickPenalties(delta);
+
+  if (state.clock.seconds === 0 && state.clock.running) {
+    stopClockLocal();
+    syncActivePenalties();
+    syncClockToDb();
+    showToast('⏱ Konec třetiny!');
+    startBreak(state.period);
+  }
+}
+
 function startClock() {
   if (state.clock.running) return;
+  if (state.clock.seconds <= 0) {
+    showToast('Čas je na 00:00 — nastavte další třetinu nebo časomíru resetujte.');
+    return;
+  }
   state.clock.running = true;
   state.clock.startedAt = Date.now();
+  state.clock.startSeconds = state.clock.seconds;
   document.getElementById('clockStartBtn').textContent = '⏸ PAUZA';
   document.getElementById('clockStartBtn').className = 'clock-btn stop';
-  state.clock.interval = setInterval(() => {
-    state.clock.seconds = Math.max(0, state.clock.seconds - 1);
-    renderClock();
-    tickPenalties();
-    if (state.clock.seconds === 0) {
-      stopClock();
-      syncClockToDb();
-      showToast('⏱ Konec třetiny!');
-      startBreak(state.period);
-    }
-  }, 1000);
-  syncClockToDb();
+  tickClock();
+  if (state.clock.running) state.clock.interval = setInterval(tickClock, 250);
+  const penaltySnapshot = state.penalties.map(p => ({ ...p }));
+  syncActivePenalties(penaltySnapshot).finally(syncClockToDb);
 }
 
 function stopClockLocal() {
+  if (state.clock.running) state.clock.seconds = getClockSecondsNow();
   state.clock.running = false;
   clearInterval(state.clock.interval);
+  state.clock.interval = null;
+  state.clock.startedAt = null;
+  state.clock.startSeconds = state.clock.seconds;
   document.getElementById('clockStartBtn').textContent = '▶ START';
   document.getElementById('clockStartBtn').className = 'clock-btn start';
+  renderClock();
 }
 
 function stopClock() {
   stopClockLocal();
-  if (currentMatchId) syncClockToDb();
+  if (currentMatchId) return Promise.all([syncActivePenalties(), syncClockToDb()]);
+  return Promise.resolve();
 }
 
 function resetClock() {
-  stopClock();
+  stopClockLocal();
   state.clock.seconds = state.period >= 4 ? 5*60 : 20*60;
+  state.clock.startSeconds = state.clock.seconds;
   renderClock();
-  syncClockToDb();
+  syncActivePenalties().finally(syncClockToDb);
 }
 
 function renderClock() {
@@ -842,63 +1009,62 @@ function renderClock() {
 
 async function syncClockToDb() {
   if (!currentMatchId) return;
+  setSyncDot('saving');
   try {
-    await sb.from('matches').update({
-      clock_seconds: state.clock.seconds,
+    await enqueueMatchUpdate(currentMatchId, {
+      clock_seconds: state.clock.running ? state.clock.startSeconds : state.clock.seconds,
       clock_running: state.clock.running,
-      clock_started_at: state.clock.running ? new Date().toISOString() : null,
+      clock_started_at: state.clock.running ? new Date(state.clock.startedAt).toISOString() : null,
       updated_at: new Date().toISOString()
-    }).eq('id', currentMatchId);
-  } catch(e) { console.warn('Clock sync failed:', e); }
+    });
+    setSyncDot('ok');
+  } catch(e) {
+    setSyncDot('error');
+    console.warn('Clock sync failed:', e);
+  }
 }
 
 // Aplikuje stav hodin přijatý z DB (pro druhé zařízení)
 function applyClockFromDb(match) {
   // Zastavit lokální interval — bez zápisu do DB
   clearInterval(state.clock.interval);
-  state.clock.running = false;
+  state.clock.interval = null;
   document.getElementById('clockStartBtn').textContent = '▶ START';
   document.getElementById('clockStartBtn').className = 'clock-btn start';
+  const fallback = state.period >= 4 ? 5*60 : 20*60;
+  const snapshot = AxonoLogic.clockSnapshot(match, Date.now(), fallback);
+  state.clock.seconds = snapshot.seconds;
+  state.clock.running = snapshot.running;
+  state.clock.startedAt = snapshot.startedAt;
+  state.clock.startSeconds = snapshot.startSeconds;
 
-  if (match.clock_running && match.clock_started_at) {
-    // Dopočítat aktuální čas: uložené sekundy mínus uplynulý čas od startu
-    const elapsed = Math.floor((Date.now() - new Date(match.clock_started_at).getTime()) / 1000);
-    const seconds = Math.max(0, match.clock_seconds - elapsed);
-    // Pokud čas doběhl mezitím, jen zobraz 0 — nespouštěj toast
-    if (seconds === 0) {
-      state.clock.seconds = 0;
-      renderClock();
-      return;
-    }
-    state.clock.seconds = seconds;
-    state.clock.running = true;
+  if (snapshot.running) {
     document.getElementById('clockStartBtn').textContent = '⏸ PAUZA';
     document.getElementById('clockStartBtn').className = 'clock-btn stop';
-    state.clock.interval = setInterval(() => {
-      state.clock.seconds = Math.max(0, state.clock.seconds - 1);
-      renderClock();
-      tickPenalties();
-      if (state.clock.seconds === 0) {
-        stopClockLocal();
-        showToast('⏱ Konec třetiny!');
-        startBreak(state.period);
-      }
-    }, 1000);
-  } else {
-    // Hodiny stojí — jen zobraz uložený čas, ale ne 0 pokud nebyl zápas spuštěn
-    state.clock.seconds = match.clock_seconds > 0 ? match.clock_seconds : (state.period >= 4 ? 5*60 : 20*60);
+    tickClock();
+    if (state.clock.running) state.clock.interval = setInterval(tickClock, 250);
   }
   renderClock();
 }
 
 // ─── PERIOD ───────────────────────────────────────────────────────────────────
 // ─── SCOREBOARD ───────────────────────────────────────────────────────────────
-function adjustScore(team, delta) {
+async function adjustScore(team, delta) {
+  const previousA = state.teamA;
+  const previousB = state.teamB;
   if (team === 'A') { state.teamA = Math.max(0, state.teamA + delta); bumpScore('scoreA'); }
   else { state.teamB = Math.max(0, state.teamB + delta); bumpScore('scoreB'); }
   updateScoreboard();
-  saveMatchState();
+  const saved = await saveMatchState();
+  if (!saved) {
+    state.teamA = previousA;
+    state.teamB = previousB;
+    updateScoreboard();
+    showToast('Skóre se nepodařilo uložit. Změna byla vrácena.');
+    return false;
+  }
   renderMatchList();
+  return true;
 }
 function bumpScore(id) {
   const el = document.getElementById(id);
@@ -928,7 +1094,11 @@ document.getElementById('teamBName').addEventListener('change', () => { syncTeam
 // ─── TABS ─────────────────────────────────────────────────────────────────────
 const TAB_NAMES = ['gol','pen','roster','tymy','prehled','stats'];
 function switchTab(name) {
-  document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', TAB_NAMES[i]===name));
+  document.querySelectorAll('.tab').forEach((t,i) => {
+    const active = TAB_NAMES[i]===name;
+    t.classList.toggle('active', active);
+    t.setAttribute('aria-selected', String(active));
+  });
   document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
   document.getElementById('tab-'+name).classList.add('active');
   if (name==='stats') renderStats();
@@ -947,12 +1117,12 @@ function selectRosterTeam(t) {
 function renderRosters() {
   ['A','B'].forEach(t => {
     const el = document.getElementById('roster'+t);
-    if (!state.rosters[t].length) { el.innerHTML='<div class="empty-msg" style="padding:8px;font-size:11px;">Prázdná soupisku.</div>'; return; }
+    if (!state.rosters[t].length) { el.innerHTML='<div class="empty-msg" style="padding:8px;font-size:11px;">Prázdná soupiska.</div>'; return; }
     el.innerHTML = [...state.rosters[t]].sort((a,b)=>Number(a.num)-Number(b.num)).map(p=>`
       <div class="player-item">
         <span class="player-num">#${esc(p.num)}</span>
         <span class="player-name${p.cap?' cap':''}">${esc(p.name)}</span>
-        <button class="del-btn" onclick="removePlayer('${t}',${p.id})">✕</button>
+        <button class="del-btn" onclick="removePlayer(${jsString(t)},${jsString(p.id)})" title="Odebrat hráče" aria-label="Odebrat hráče">✕</button>
       </div>`).join('');
   });
 }
@@ -993,12 +1163,31 @@ function selectPenTeam(t) {
   document.getElementById('penOptB').classList.toggle('active', t==='B');
   fillSelect('penPlayerSelect', t, '— ze soupravy —');
 }
-function tickPenalties() {
+function penaltyClockRecord() {
+  return {
+    clock_running: state.clock.running,
+    clock_started_at: state.clock.startedAt ? new Date(state.clock.startedAt).toISOString() : null
+  };
+}
+function normalizePenaltyRows(rows, matchRecord = penaltyClockRecord()) {
+  return AxonoLogic.penaltiesAtSnapshot(rows, matchRecord).map(p => ({
+    id: p.id, team: p.team, teamName: p.team_name ?? p.teamName,
+    player: p.player, mins: Number(p.mins) || 0, reason: p.reason || '',
+    minute: p.minute || '—', period: p.period, remaining: p.remaining,
+    expired: p.expired, createdAt: p.created_at || p.createdAt || null
+  }));
+}
+function tickPenalties(delta = 1) {
   let changed = false;
   state.penalties.forEach(p => {
     if (!p.expired && p.remaining > 0) {
-      p.remaining--;
-      if (p.remaining===0) { p.expired=true; showToast(`✅ Trest skončil: ${p.player}`); changed=true; }
+      p.remaining = Math.max(0, p.remaining - delta);
+      if (p.remaining===0) {
+        p.expired=true;
+        showToast(`✅ Trest skončil: ${p.player}`);
+        changed=true;
+        persistPenaltyState(p);
+      }
     }
   });
   if (changed || state.clock.running) renderPenList();
@@ -1017,8 +1206,8 @@ function renderPenList() {
         <div class="entry-sub">${p.teamName} · T${p.period} · ${p.minute}' · ${p.mins>0?p.mins+' min':'do konce'}${p.reason?' · '+esc(p.reason):''}</div>
       </div>
       ${!p.expired&&p.remaining>0?`<div class="pen-timer">${timeStr}</div>`:''}
-      ${!p.expired?`<button class="expire-btn" onclick="expirePenalty(${p.id})">✓ KONEC</button>`:'<span style="font-size:9px;color:var(--muted);">VYPRŠEL</span>'}
-      <button class="del-btn" onclick="deletePenalty(${p.id})">✕</button>
+      ${!p.expired?`<button class="expire-btn" onclick="expirePenalty(${jsString(p.id)})">✓ KONEC</button>`:'<span style="font-size:9px;color:var(--muted);">VYPRŠEL</span>'}
+      <button class="del-btn" onclick="deletePenalty(${jsString(p.id)})" title="Smazat trest" aria-label="Smazat trest">✕</button>
     </div>`;
   }).join('');
 }
@@ -1048,7 +1237,7 @@ function renderEventLog() {
         ${ev.assist?`<div class="entry-sub">Asist: ${esc(ev.assist)}</div>`:''}
       </div>
       <div class="entry-meta"><div>${esc(ev.teamName)}</div><div>T${ev.period} · ${ev.minute}'</div></div>
-      <button class="del-btn" onclick="deleteGoal(${ev.id})">✕</button>
+      <button class="del-btn" onclick="deleteGoal(${jsString(ev.id)})" title="Smazat gól" aria-label="Smazat gól">✕</button>
     </div>` : `
     <div class="entry-row penalty-row ${ev.team==='B'?'team-b':''}">
       <div class="entry-icon">🚫</div>
@@ -1057,7 +1246,7 @@ function renderEventLog() {
         <div class="entry-sub">${ev.mins>0?ev.mins+' min':'do konce'}${ev.reason?' · '+esc(ev.reason):''}</div>
       </div>
       <div class="entry-meta"><div>${esc(ev.teamName)}</div><div>T${ev.period} · ${ev.minute}'</div></div>
-      <button class="del-btn" onclick="deletePenalty(${ev.id})">✕</button>
+      <button class="del-btn" onclick="deletePenalty(${jsString(ev.id)})" title="Smazat trest" aria-label="Smazat trest">✕</button>
     </div>`).join('');
 }
 function updateEventCount() {
@@ -1096,12 +1285,54 @@ function renderStats() {
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
 function getTeamName(t) { return t==='A'?(document.getElementById('teamAName').value||'DOMÁCÍ'):(document.getElementById('teamBName').value||'HOSTÉ'); }
 function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function jsString(value) {
+  return JSON.stringify(String(value))
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
 function showToast(msg, gold=false) {
   const t = document.getElementById('toast');
   t.textContent = msg;
   t.className = 'toast' + (gold?' goal-toast':'') + ' show';
   clearTimeout(t._timer);
   t._timer = setTimeout(()=>t.classList.remove('show'), 2400);
+}
+
+let pendingUndo = null;
+let undoTimer = null;
+
+function setActionButtonBusy(button, busy, label) {
+  if (!button) return;
+  button.disabled = busy;
+  button.textContent = label;
+}
+
+function offerUndo(action, message) {
+  pendingUndo = action;
+  const bar = document.getElementById('undoBar');
+  document.getElementById('undoMessage').textContent = message;
+  bar.classList.add('show');
+  bar.setAttribute('aria-hidden', 'false');
+  clearTimeout(undoTimer);
+  undoTimer = setTimeout(clearUndo, 6500);
+}
+
+function clearUndo() {
+  pendingUndo = null;
+  clearTimeout(undoTimer);
+  const bar = document.getElementById('undoBar');
+  if (!bar) return;
+  bar.classList.remove('show');
+  bar.setAttribute('aria-hidden', 'true');
+}
+
+async function undoLastAction() {
+  const action = pendingUndo;
+  if (!action) return;
+  clearUndo();
+  let removed = false;
+  if (action.type === 'goal') removed = await deleteGoal(action.id, { silent: true });
+  if (action.type === 'penalty') removed = await deletePenalty(action.id, { silent: true });
+  if (removed) showToast('Poslední akce byla vrácena');
 }
 
 // ─── EXPORT ───────────────────────────────────────────────────────────────────
@@ -1296,25 +1527,62 @@ ${stats.length ? `<div class="section">
 }
 
 // ─── RESET ────────────────────────────────────────────────────────────────────
-function resetGame() {
+async function resetGame() {
   if (!confirm('Opravdu resetovat celý zápas? Tuto akci nelze vrátit.')) return;
-  stopClock();
-  Object.assign(state, { teamA:0, teamB:0, period:1, goals:[], penalties:[], goalTeam:'A', penTeam:'A', rosterTeam:'A', goalId:0, penId:0, playerId:0, rosters:{A:[],B:[]}, clock:{seconds:20*60,running:false,interval:null} });
-  document.getElementById('teamAName').value='DOMÁCÍ'; document.getElementById('teamBName').value='HOSTÉ';
-  document.getElementById('periodDisplay').textContent='TŘETINA 1';
-  syncTeamNames(); updateScoreboard(); renderClock(); renderPenList(); renderRosters(); renderEventLog(); updateEventCount(); updatePlayerSelects();
-  saveState();
-  showToast('Zápas byl resetován ↺');
+  clearUndo();
+  stopClockLocal();
+  setSyncDot('saving');
+  const matchId = currentMatchId;
+  try {
+    if (matchId) {
+      // Dokončit starší zápisy skóre/času, aby po resetu nevrátily původní stav.
+      await matchWriteQueue.catch(() => {});
+      const results = await Promise.all([
+        sb.from('goals').delete().eq('match_id', matchId),
+        sb.from('penalties').delete().eq('match_id', matchId),
+        sb.from('players').delete().eq('match_id', matchId)
+      ]);
+      const childError = results.find(result => result.error)?.error;
+      if (childError) throw childError;
+      await enqueueMatchUpdate(matchId, {
+        score_a: 0, score_b: 0, period: 1,
+        clock_seconds: 1200, clock_running: false, clock_started_at: null,
+        break_active: false, break_started_at: null, break_total_seconds: 0,
+        updated_at: new Date().toISOString()
+      });
+    }
+
+    stopBreakLocal();
+    Object.assign(state, {
+      teamA:0, teamB:0, period:1, goals:[], penalties:[],
+      goalTeam:'A', penTeam:'A', rosterTeam:'A', goalId:0, penId:0, playerId:0,
+      rosters:{A:[],B:[]}, breakTotalSeconds:0,
+      clock:{seconds:20*60,running:false,interval:null,startedAt:null,startSeconds:20*60}
+    });
+    document.getElementById('periodDisplay').textContent='TŘETINA 1';
+    syncTeamNames(); updateScoreboard(); renderClock(); renderPenList(); renderRosters();
+    renderEventLog(); updateEventCount(); updatePlayerSelects(); renderBreakSummary();
+    setSyncDot(matchId ? 'ok' : 'off');
+    showToast('Zápas byl resetován');
+  } catch (error) {
+    setSyncDot('error');
+    showToast('Reset se nepodařilo dokončit. Stav znovu načítám.');
+    console.warn('Match reset failed:', error);
+    if (matchId) await loadMatch(matchId, currentMatchCode);
+  }
 }
 
 // ─── SUPABASE SYNC ───────────────────────────────────────────────────────────
 
 function setSyncDot(status) {
   const dot = document.getElementById('syncDot');
+  const label = document.getElementById('syncStatusText');
   if (!dot) return;
   const colors = { ok: '#00e676', saving: '#ffab00', error: '#e8001c', off: '#444' };
+  const labels = { ok: 'Připojeno', saving: 'Ukládám…', error: 'Chyba spojení', off: 'Nepřipojeno' };
   dot.style.background = colors[status] || colors.off;
-  dot.title = { ok: 'Připojeno', saving: 'Ukládám...', error: 'Chyba připojení', off: 'Nepřipojeno' }[status] || '';
+  dot.title = labels[status] || labels.off;
+  if (label) label.textContent = labels[status] || labels.off;
 }
 
 // ─── SIDEBAR ──────────────────────────────────────────────────────────────────
@@ -1362,7 +1630,7 @@ function matchItemHtml(m, isPast) {
   const dateLine = m.scheduled_at
     ? new Date(m.scheduled_at).toLocaleString('cs-CZ', { day:'numeric', month:'numeric', hour:'2-digit', minute:'2-digit' })
     : new Date(m.created_at).toLocaleDateString('cs-CZ', { day:'numeric', month:'numeric' });
-  return `<div class="match-item${isActive?' active':''}${isPast?' past':''}" onclick="selectMatchFromList('${m.id}','${m.code}')">
+  return `<div class="match-item${isActive?' active':''}${isPast?' past':''}" onclick="selectMatchFromList(${jsString(m.id)},${jsString(m.code)})">
     <div style="display:flex;justify-content:space-between;align-items:center;">
       <div class="match-item-code">${m.code}</div>
       ${scoreLine ? `<div class="match-item-score">${scoreLine}</div>` : ''}
@@ -1375,8 +1643,8 @@ function matchItemHtml(m, isPast) {
 async function selectMatchFromList(id, code) {
   if (id === currentMatchId) { closeSidebar(); return; }
   if (hasActiveGame() && !confirm('Přepnout na jiný zápas?')) return;
-  stopClock();
-  await loadMatch(id, code);
+  await stopClock();
+  if (!await loadMatch(id, code)) return;
   const newUrl = new URL(window.location.href);
   newUrl.searchParams.set('match', code);
   window.history.replaceState({}, '', newUrl);
@@ -1410,22 +1678,28 @@ function closeNewMatchModal() {
 
 async function confirmNewMatch() {
   if (hasActiveGame() && !confirm('Aktuální zápas bude ukončen. Vytvořit nový?')) return;
-  stopClock();
-  const code = generateMatchCode();
+  await stopClock();
   const teamA = document.getElementById('newMatchTeamA').value || 'DOMÁCÍ';
   const teamB = document.getElementById('newMatchTeamB').value || 'HOSTÉ';
   const dateVal = document.getElementById('newMatchDate').value;
   const scheduledAt = dateVal ? new Date(dateVal).toISOString() : null;
   setSyncDot('saving');
   try {
-    const { data, error } = await sb.from('matches').insert({
-      code, team_a_name: teamA, team_b_name: teamB,
-      score_a: 0, score_b: 0, period: 1, clock_seconds: 1200,
-      scheduled_at: scheduledAt
-    }).select().single();
-    if (error) throw error;
+    let data = null;
+    let code = '';
+    for (let attempt = 0; attempt < 5 && !data; attempt++) {
+      code = generateMatchCode();
+      const result = await sb.from('matches').insert({
+        code, team_a_name: teamA, team_b_name: teamB,
+        score_a: 0, score_b: 0, period: 1, clock_seconds: 1200,
+        scheduled_at: scheduledAt
+      }).select().single();
+      if (!result.error) data = result.data;
+      else if (result.error.code !== '23505') throw result.error;
+    }
+    if (!data) throw new Error('Nepodařilo se vytvořit unikátní kód zápasu.');
     closeNewMatchModal();
-    await loadMatch(data.id, code);
+    if (!await loadMatch(data.id, code)) return;
     const newUrl = new URL(window.location.href);
     newUrl.searchParams.set('match', code);
     window.history.replaceState({}, '', newUrl);
@@ -1465,7 +1739,7 @@ async function joinMatch() {
     }
     if (!data) { showToast('❌ Zápas nenalezen: ' + code); setSyncDot('error'); return; }
     document.getElementById('joinDialog').style.display = 'none';
-    await loadMatch(data.id, data.code);
+    if (!await loadMatch(data.id, data.code)) return;
     const newUrl = new URL(window.location.href);
     newUrl.searchParams.set('match', data.code);
     window.history.replaceState({}, '', newUrl);
@@ -1497,6 +1771,14 @@ function copyLiveLink() {
 // ─── PŘESTÁVKA ────────────────────────────────────────────────────────────────
 let breakState = { active: false, startedAt: null, elapsed: 0, interval: null, afterPeriod: 0 };
 
+function stopBreakLocal() {
+  clearInterval(breakState.interval);
+  breakState.active = false;
+  breakState.startedAt = null;
+  breakState.interval = null;
+  document.getElementById('breakBanner').classList.remove('visible');
+}
+
 function startBreak(afterPeriod) {
   clearInterval(breakState.interval);
   breakState.active = true;
@@ -1525,24 +1807,30 @@ async function saveBreakToDb(active) {
   if (!currentMatchId) return;
   try {
     const update = { break_active: active, updated_at: new Date().toISOString() };
+    let nextTotal = state.breakTotalSeconds || 0;
     if (active) update.break_started_at = new Date(breakState.startedAt).toISOString();
     else {
       update.break_started_at = null;
       // Přičíst uplynulý čas k celkovým přestávkám
       const elapsed = Math.floor((Date.now() - breakState.startedAt) / 1000);
-      update.break_total_seconds = (state.breakTotalSeconds || 0) + elapsed;
-      state.breakTotalSeconds = update.break_total_seconds;
+      nextTotal += Math.max(0, elapsed);
+      update.break_total_seconds = nextTotal;
     }
-    await sb.from('matches').update(update).eq('id', currentMatchId);
-  } catch(e) { console.warn('Break sync failed', e); }
+    await enqueueMatchUpdate(currentMatchId, update);
+    if (!active) state.breakTotalSeconds = nextTotal;
+    return true;
+  } catch(e) {
+    setSyncDot('error');
+    console.warn('Break sync failed', e);
+    return false;
+  }
 }
 
-function skipBreak() {
+async function skipBreak() {
   clearInterval(breakState.interval);
-  if (breakState.active) saveBreakToDb(false);
-  breakState.active = false;
-  document.getElementById('breakBanner').classList.remove('visible');
-  setTimeout(renderBreakSummary, 300); // po DB uložení
+  if (breakState.active) await saveBreakToDb(false);
+  stopBreakLocal();
+  renderBreakSummary();
 }
 
 function editBreakTime() {
@@ -1559,8 +1847,8 @@ function editBreakTime() {
   }
 }
 
-function startNextPeriod() {
-  skipBreak();
+async function startNextPeriod() {
+  await skipBreak();
   const nextPeriod = state.period + 1;
   if (nextPeriod <= 5 && state.period < nextPeriod) changePeriod(1);
   state.clock.seconds = state.period >= 4 ? 5*60 : 20*60;
@@ -1585,7 +1873,7 @@ function applyBreakFromDb(match) {
       renderBreakClock();
     }, 1000);
   } else {
-    if (breakState.active) skipBreak();
+    stopBreakLocal();
   }
   state.breakTotalSeconds = match.break_total_seconds || 0;
   renderBreakSummary();
@@ -1606,81 +1894,75 @@ function renderBreakSummary() {
 }
 
 async function loadMatch(matchId, code) {
-  currentMatchId = matchId;
-  currentMatchCode = code;
-  document.getElementById('matchCodeDisplay').textContent = code;
-  const copyBtn = document.getElementById('copyLinkBtn');
-  if (copyBtn) copyBtn.style.display = 'block';
-  const liveBtn = document.getElementById('copyLiveBtn');
-  if (liveBtn) liveBtn.style.display = 'block';
-  localStorage.setItem('axono_last_match', JSON.stringify({ matchId, code }));
+  const requestId = ++loadMatchRequest;
+  setSyncDot('saving');
+  try {
+    const [matchResult, goalsResult, pensResult, playersResult] = await Promise.all([
+      sb.from('matches').select('*').eq('id', matchId).single(),
+      sb.from('goals').select('*').eq('match_id', matchId).order('created_at'),
+      sb.from('penalties').select('*').eq('match_id', matchId).order('created_at'),
+      sb.from('players').select('*').eq('match_id', matchId).order('num')
+    ]);
+    if (requestId !== loadMatchRequest) return false;
+    const firstError = [matchResult, goalsResult, pensResult, playersResult].find(result => result.error)?.error;
+    if (firstError || !matchResult.data) throw firstError || new Error('Zápas nebyl nalezen.');
 
-  // Nejdřív zrušit starou realtime subscription — jinak může přepsat nový state
-  if (realtimeChannel) { sb.removeChannel(realtimeChannel); realtimeChannel = null; }
+    const match = matchResult.data;
+    currentMatchId = matchId;
+    currentMatchCode = code;
+    document.getElementById('matchCodeDisplay').textContent = code;
+    document.getElementById('copyLinkBtn').style.display = 'block';
+    document.getElementById('copyLiveBtn').style.display = 'block';
+    localStorage.setItem('axono_last_match', JSON.stringify({ matchId, code }));
 
-  // Reset local state — stopClockLocal nepíše do DB
-  clearInterval(state.clock.interval);
-  Object.assign(state, { teamA:0, teamB:0, period:1, goals:[], penalties:[], goalTeam:'A', penTeam:'A', rosterTeam:'A', goalId:0, penId:0, playerId:0, rosters:{A:[],B:[]}, clock:{seconds:1200,running:false,interval:null} });
-  document.getElementById('clockStartBtn').textContent = '▶ START';
-  document.getElementById('clockStartBtn').className = 'clock-btn start';
+    if (realtimeChannel) { sb.removeChannel(realtimeChannel); realtimeChannel = null; }
+    clearInterval(state.clock.interval);
+    stopBreakLocal();
+    Object.assign(state, {
+      teamA:Number(match.score_a)||0, teamB:Number(match.score_b)||0, period:Number(match.period)||1,
+      goals:[], penalties:[], goalTeam:'A', penTeam:'A', rosterTeam:'A',
+      goalId:0, penId:0, playerId:0, rosters:{A:[],B:[]}, breakTotalSeconds:0,
+      clock:{seconds:1200,running:false,interval:null,startedAt:null,startSeconds:1200}
+    });
 
-  // Fetch match data
-  const { data: match } = await sb.from('matches').select('*').eq('id', matchId).single();
-  if (match) {
-    state.teamA = match.score_a;
-    state.teamB = match.score_b;
-    state.period = match.period;
-
-    // Nastavit jméno týmu — pokud option neexistuje, přidej ji dočasně
     ['A','B'].forEach(t => {
-      const selId = t === 'A' ? 'teamAName' : 'teamBName';
+      const sel = document.getElementById(t === 'A' ? 'teamAName' : 'teamBName');
       const name = t === 'A' ? match.team_a_name : match.team_b_name;
-      const sel = document.getElementById(selId);
-      if (!sel) return;
-      // Pokud hodnota v selectu neexistuje, přidej ji
-      if (name && !Array.from(sel.options).some(o => o.value === name)) {
-        const opt = document.createElement('option');
-        opt.value = name; opt.textContent = name;
-        sel.appendChild(opt);
+      if (name && !Array.from(sel.options).some(option => option.value === name)) {
+        const option = document.createElement('option');
+        option.value = name; option.textContent = name;
+        sel.appendChild(option);
       }
       sel.value = name || (t === 'A' ? 'DOMÁCÍ' : 'HOSTÉ');
     });
 
+    state.goals = (goalsResult.data || []).map(g => ({
+      id:g.id, team:g.team, teamName:g.team_name, scorer:g.scorer,
+      assist:g.assist||'', minute:g.minute||'—', period:g.period
+    }));
+    state.penalties = normalizePenaltyRows(pensResult.data || [], match);
+    (playersResult.data || []).forEach(p => {
+      if (state.rosters[p.team]) state.rosters[p.team].push({ id:p.id, num:p.num, name:p.name, cap:p.is_captain, goalie:p.is_goalie });
+    });
+    state.goalId = state.goals.length;
+    state.penId = state.penalties.length;
+    state.playerId = (playersResult.data || []).length;
+
     document.getElementById('periodDisplay').textContent = PERIODS[state.period] || 'TŘETINA 1';
     applyClockFromDb(match);
     applyBreakFromDb(match);
+    syncTeamNames(); updateScoreboard(); renderClock(); renderPenList();
+    renderRosters(); renderEventLog(); updateEventCount(); updatePlayerSelects();
+    subscribeRealtime(matchId);
+    setSyncDot('ok');
+    return true;
+  } catch (error) {
+    if (requestId !== loadMatchRequest) return false;
+    setSyncDot('error');
+    showToast('Zápas se nepodařilo načíst.');
+    console.warn('Match load failed:', error);
+    return false;
   }
-
-  // Fetch goals
-  const { data: goals } = await sb.from('goals').select('*').eq('match_id', matchId).order('created_at');
-  if (goals) {
-    state.goals = goals.map(g => ({ id: g.id, team: g.team, teamName: g.team_name, scorer: g.scorer, assist: g.assist||'', minute: g.minute||'—', period: g.period }));
-    state.goalId = state.goals.length;
-  }
-
-  // Fetch penalties
-  const { data: pens } = await sb.from('penalties').select('*').eq('match_id', matchId).order('created_at');
-  if (pens) {
-    state.penalties = pens.map(p => ({ id: p.id, team: p.team, teamName: p.team_name, player: p.player, mins: p.mins, reason: p.reason||'', minute: p.minute||'—', period: p.period, remaining: p.remaining ?? p.mins*60, expired: p.expired }));
-    state.penId = state.penalties.length;
-  }
-
-  // Fetch players
-  const { data: players } = await sb.from('players').select('*').eq('match_id', matchId).order('num');
-  if (players) {
-    state.rosters = { A: [], B: [] };
-    players.forEach(p => {
-      const t = p.team;
-      if (state.rosters[t]) state.rosters[t].push({ id: p.id, num: p.num, name: p.name, cap: p.is_captain });
-    });
-    state.playerId = players.length;
-  }
-
-  syncTeamNames(); updateScoreboard(); renderClock(); renderPenList();
-  renderRosters(); renderEventLog(); updateEventCount(); updatePlayerSelects();
-
-  // Subscribe to real-time updates
-  subscribeRealtime(matchId);
 }
 
 function subscribeRealtime(matchId) {
@@ -1688,7 +1970,8 @@ function subscribeRealtime(matchId) {
   realtimeChannel = sb.channel(`match-${matchId}`)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'matches', filter: `id=eq.${matchId}` }, async (payload) => {
       const data = payload.new;
-      if (!data) return;
+      if (!data || currentMatchId !== matchId) return;
+      const wasRunning = state.clock.running;
       state.teamA = data.score_a; state.teamB = data.score_b;
       state.period = data.period;
       document.getElementById('teamAName').value = data.team_a_name;
@@ -1696,22 +1979,31 @@ function subscribeRealtime(matchId) {
       document.getElementById('periodDisplay').textContent = PERIODS[state.period];
       updateScoreboard(); syncTeamNames();
       applyClockFromDb(data);
+      applyBreakFromDb(data);
+      if (wasRunning && !data.clock_running) {
+        const { data: penalties, error } = await sb.from('penalties').select('*').eq('match_id', matchId).order('created_at');
+        if (!error && penalties && currentMatchId === matchId) {
+          state.penalties = normalizePenaltyRows(penalties, data);
+          renderPenList(); renderPenBadges(); renderEventLog();
+        }
+      }
     })
     .on('postgres_changes', { event: '*', schema: 'public', table: 'goals', filter: `match_id=eq.${matchId}` }, async () => {
-      const { data } = await sb.from('goals').select('*').eq('match_id', matchId).order('created_at');
-      if (!data) return;
+      const { data, error } = await sb.from('goals').select('*').eq('match_id', matchId).order('created_at');
+      if (error || !data || currentMatchId !== matchId) return;
       state.goals = data.map(g => ({ id: g.id, team: g.team, teamName: g.team_name, scorer: g.scorer, assist: g.assist||'', minute: g.minute||'—', period: g.period }));
       renderEventLog(); updateEventCount();
     })
     .on('postgres_changes', { event: '*', schema: 'public', table: 'penalties', filter: `match_id=eq.${matchId}` }, async () => {
-      const { data } = await sb.from('penalties').select('*').eq('match_id', matchId).order('created_at');
-      if (!data) return;
-      state.penalties = data.map(p => ({ id: p.id, team: p.team, teamName: p.team_name, player: p.player, mins: p.mins, reason: p.reason||'', minute: p.minute||'—', period: p.period, remaining: p.remaining ?? p.mins*60, expired: p.expired }));
+      const { data, error } = await sb.from('penalties').select('*').eq('match_id', matchId).order('created_at');
+      if (error || !data) return;
+      if (currentMatchId !== matchId) return;
+      state.penalties = normalizePenaltyRows(data);
       renderPenList(); renderPenBadges(); renderEventLog();
     })
     .on('postgres_changes', { event: '*', schema: 'public', table: 'players', filter: `match_id=eq.${matchId}` }, async () => {
-      const { data } = await sb.from('players').select('*').eq('match_id', matchId).order('num');
-      if (!data) return;
+      const { data, error } = await sb.from('players').select('*').eq('match_id', matchId).order('num');
+      if (error || !data || currentMatchId !== matchId) return;
       state.rosters = { A: [], B: [] };
       data.forEach(p => { if (state.rosters[p.team]) state.rosters[p.team].push({ id: p.id, num: p.num, name: p.name, cap: p.is_captain }); });
       renderRosters(); updatePlayerSelects();
@@ -1721,19 +2013,31 @@ function subscribeRealtime(matchId) {
 
 // ─── DB WRITES (replace localStorage saveState) ───────────────────────────────
 async function saveMatchState() {
-  if (!currentMatchId) return;
+  if (!currentMatchId) return true;
   setSyncDot('saving');
   try {
-    await sb.from('matches').update({
+    const update = {
       score_a: state.teamA, score_b: state.teamB,
-      period: state.period, clock_seconds: state.clock.seconds,
+      period: state.period,
       team_a_name: document.getElementById('teamAName').value || 'DOMÁCÍ',
       team_b_name: document.getElementById('teamBName').value || 'HOSTÉ',
       updated_at: new Date().toISOString()
-    }).eq('id', currentMatchId);
+    };
+    // Běžná změna skóre nebo názvu týmu nesmí za běhu posunout kotvu časomíry.
+    if (!state.clock.running) {
+      update.clock_seconds = state.clock.seconds;
+      update.clock_running = false;
+      update.clock_started_at = null;
+    }
+    await enqueueMatchUpdate(currentMatchId, update);
     setSyncDot('ok');
     showSaveIndicator();
-  } catch(e) { setSyncDot('error'); }
+    return true;
+  } catch(e) {
+    setSyncDot('error');
+    console.warn('Match state sync failed:', e);
+    return false;
+  }
 }
 
 // Override saveState to use Supabase instead of localStorage
@@ -1741,38 +2045,101 @@ function saveState() { saveMatchState(); }
 
 // ─── SUPABASE MUTACE ─────────────────────────────────────────────────────────
 
+async function persistPenaltyState(penalty, matchId = currentMatchId) {
+  if (!matchId || !penalty || String(penalty.id).startsWith('local-')) return true;
+  const { error } = await sb.from('penalties').update({
+    remaining: penalty.remaining,
+    expired: Boolean(penalty.expired)
+  }).eq('id', penalty.id).eq('match_id', matchId);
+  if (error) {
+    console.warn('Penalty sync failed:', error);
+    setSyncDot('error');
+    return false;
+  }
+  return true;
+}
+
+async function syncActivePenalties(snapshot = state.penalties, matchId = currentMatchId) {
+  const active = snapshot.filter(p => !String(p.id).startsWith('local-') && (p.remaining >= 0 || p.expired));
+  if (!matchId || !active.length) return true;
+  const results = await Promise.all(active.map(p => persistPenaltyState(p, matchId)));
+  return results.every(Boolean);
+}
+
 // ── GOALS ──
-function addGoal() {
+async function addGoal() {
   const scorer = resolvePlayer('scorerNumQuick', 'scorerSelect', state.goalTeam);
   const assist = resolvePlayer('assistNumQuick', 'assistSelect', state.goalTeam);
   const minute = document.getElementById('golMinuta').value.trim() || String(Math.floor(((state.period>=4?5:20)*60-state.clock.seconds)/60));
   if (!scorer) { showToast('Zadejte číslo nebo vyberte střelce!'); return; }
   const teamName = getTeamName(state.goalTeam);
-  const goalObj = { id: ++state.goalId, team: state.goalTeam, teamName, scorer, assist, minute: minute||'—', period: state.period };
-  state.goals.push(goalObj);
-  adjustScore(state.goalTeam, 1);
-  ['scorerNumQuick','assistNumQuick','golMinuta'].forEach(id => { document.getElementById(id).value=''; });
-  document.getElementById('scorerSelect').value='';
-  document.getElementById('assistSelect').value='';
-  showToast(`⚡ GÓL — ${scorer}!`, true);
-  renderEventLog(); updateEventCount();
-  if (currentMatchId) {
-    sb.from('goals').insert({ match_id: currentMatchId, team: state.goalTeam, team_name: teamName, scorer, assist, minute: minute||'—', period: state.period }).then(() => saveMatchState());
+  const button = document.getElementById('goalSubmitButton');
+  setActionButtonBusy(button, true, 'UKLÁDÁM GÓL…');
+  try {
+    let id = `local-goal-${++state.goalId}`;
+    if (currentMatchId) {
+      setSyncDot('saving');
+      const { data, error } = await sb.from('goals').insert({
+        match_id: currentMatchId, team: state.goalTeam, team_name: teamName,
+        scorer, assist, minute: minute||'—', period: state.period
+      }).select('id').single();
+      if (error) throw error;
+      id = data.id;
+    }
+    const goalObj = { id, team: state.goalTeam, teamName, scorer, assist, minute: minute||'—', period: state.period };
+    if (!state.goals.some(g => String(g.id) === String(id))) state.goals.push(goalObj);
+    if (!await adjustScore(state.goalTeam, 1)) {
+      state.goals = state.goals.filter(goal => String(goal.id) !== String(id));
+      if (currentMatchId && !String(id).startsWith('local-')) {
+        await sb.from('goals').delete().eq('id', id).eq('match_id', currentMatchId);
+      }
+      renderEventLog(); updateEventCount();
+      throw new Error('Score update failed');
+    }
+    ['scorerNumQuick','assistNumQuick','golMinuta'].forEach(fieldId => { document.getElementById(fieldId).value=''; });
+    document.getElementById('scorerSelect').value='';
+    document.getElementById('assistSelect').value='';
+    renderEventLog(); updateEventCount();
+    offerUndo({ type: 'goal', id }, `Gól: ${scorer}`);
+  } catch (error) {
+    setSyncDot('error');
+    showToast('Gól se nepodařilo uložit. Zkuste to znovu.');
+    console.warn('Goal save failed:', error);
+  } finally {
+    setActionButtonBusy(button, false, '🏒 ZAPSAT GÓL');
   }
 }
 
-function deleteGoal(id) {
-  const g = state.goals.find(x=>x.id===id); if(!g) return;
+async function deleteGoal(id, options = {}) {
+  const g = state.goals.find(x=>String(x.id)===String(id)); if(!g) return false;
+  if (!options.silent && pendingUndo?.type === 'goal' && String(pendingUndo.id) === String(id)) clearUndo();
   if (g.team==='A') state.teamA=Math.max(0,state.teamA-1); else state.teamB=Math.max(0,state.teamB-1);
-  state.goals = state.goals.filter(x=>x.id!==id);
+  state.goals = state.goals.filter(x=>String(x.id)!==String(id));
   updateScoreboard(); renderEventLog(); updateEventCount();
-  if (currentMatchId) {
-    sb.from('goals').delete().eq('id', id).then(() => saveMatchState());
+  if (!await saveMatchState()) {
+    state.goals.push(g);
+    if (g.team==='A') state.teamA++; else state.teamB++;
+    updateScoreboard(); renderEventLog(); updateEventCount();
+    showToast('Gól se nepodařilo odstranit. Změna byla vrácena.');
+    return false;
   }
+  if (currentMatchId && !String(id).startsWith('local-')) {
+    const { error } = await sb.from('goals').delete().eq('id', id).eq('match_id', currentMatchId);
+    if (error) {
+      state.goals.push(g);
+      if (g.team==='A') state.teamA++; else state.teamB++;
+      updateScoreboard(); renderEventLog(); updateEventCount();
+      await saveMatchState();
+      showToast('Gól se nepodařilo odstranit.');
+      return false;
+    }
+  }
+  if (!options.silent) showToast('Gól odstraněn');
+  return true;
 }
 
 // ── PENALTIES ──
-function addPenalty() {
+async function addPenalty() {
   const player = resolvePlayer('penNumQuick', 'penPlayerSelect', state.penTeam);
   const mins = parseInt(document.getElementById('penType').value);
   const minute = document.getElementById('penMinuta').value.trim();
@@ -1780,66 +2147,132 @@ function addPenalty() {
   if (!player) { showToast('Zadejte číslo nebo vyberte hráče!'); return; }
   const teamName = getTeamName(state.penTeam);
   const remaining = mins > 0 ? mins * 60 : -1;
-  const penObj = { id: ++state.penId, team: state.penTeam, teamName, player, mins, reason, minute: minute||'—', period: state.period, remaining, expired: false };
-  state.penalties.push(penObj);
-  ['penNumQuick','penMinuta','penReason'].forEach(id=>{ document.getElementById(id).value=''; });
-  document.getElementById('penPlayerSelect').value='';
-  renderPenList(); renderPenBadges(); renderEventLog(); updateEventCount();
-  showToast(`🚫 Trest: ${player} (${mins>0?mins+' min':'do konce'})`);
-  if (currentMatchId) {
-    sb.from('penalties').insert({ match_id: currentMatchId, team: state.penTeam, team_name: teamName, player, mins, reason, minute: minute||'—', period: state.period, remaining, expired: false });
+  const button = document.getElementById('penaltySubmitButton');
+  setActionButtonBusy(button, true, 'UKLÁDÁM TREST…');
+  try {
+    let id = `local-penalty-${++state.penId}`;
+    if (currentMatchId) {
+      setSyncDot('saving');
+      const { data, error } = await sb.from('penalties').insert({
+        match_id: currentMatchId, team: state.penTeam, team_name: teamName,
+        player, mins, reason, minute: minute||'—', period: state.period,
+        remaining, expired: false
+      }).select('id').single();
+      if (error) throw error;
+      id = data.id;
+    }
+    const penObj = { id, team: state.penTeam, teamName, player, mins, reason, minute: minute||'—', period: state.period, remaining, expired: false };
+    if (!state.penalties.some(p => String(p.id) === String(id))) state.penalties.push(penObj);
+    ['penNumQuick','penMinuta','penReason'].forEach(fieldId=>{ document.getElementById(fieldId).value=''; });
+    document.getElementById('penPlayerSelect').value='';
+    renderPenList(); renderPenBadges(); renderEventLog(); updateEventCount();
+    setSyncDot('ok');
+    offerUndo({ type: 'penalty', id }, `Trest: ${player}`);
+  } catch (error) {
+    setSyncDot('error');
+    showToast('Trest se nepodařilo uložit. Zkuste to znovu.');
+    console.warn('Penalty save failed:', error);
+  } finally {
+    setActionButtonBusy(button, false, '🚫 ZAPSAT TREST');
   }
 }
 
-function deletePenalty(id) {
-  state.penalties = state.penalties.filter(x=>x.id!==id);
+async function deletePenalty(id, options = {}) {
+  const penalty = state.penalties.find(x => String(x.id) === String(id));
+  if (!penalty) return false;
+  if (!options.silent && pendingUndo?.type === 'penalty' && String(pendingUndo.id) === String(id)) clearUndo();
+  state.penalties = state.penalties.filter(x=>String(x.id)!==String(id));
   renderPenList(); renderPenBadges(); renderEventLog(); updateEventCount();
-  if (currentMatchId) sb.from('penalties').delete().eq('id', id);
+  if (currentMatchId && !String(id).startsWith('local-')) {
+    const { error } = await sb.from('penalties').delete().eq('id', id);
+    if (error) {
+      state.penalties.push(penalty);
+      renderPenList(); renderPenBadges(); renderEventLog(); updateEventCount();
+      showToast('Trest se nepodařilo odstranit.');
+      return false;
+    }
+  }
+  if (!options.silent) showToast('Trest odstraněn');
+  return true;
 }
 
-function expirePenalty(id) {
-  const p = state.penalties.find(x=>x.id===id);
-  if (p) { p.expired=true; p.remaining=0; }
+async function expirePenalty(id) {
+  const p = state.penalties.find(x=>String(x.id)===String(id));
+  if (!p) return;
+  const previous = { expired: p.expired, remaining: p.remaining };
+  p.expired=true; p.remaining=0;
   renderPenList(); renderPenBadges();
-  if (currentMatchId) sb.from('penalties').update({ expired: true, remaining: 0 }).eq('id', id);
+  if (currentMatchId && !String(id).startsWith('local-')) {
+    const ok = await persistPenaltyState(p);
+    if (!ok) {
+      Object.assign(p, previous);
+      renderPenList(); renderPenBadges();
+      showToast('Ukončení trestu se nepodařilo uložit.');
+    }
+  }
 }
 
 // ── PLAYERS ──
-function addPlayer() {
+async function addPlayer() {
   const num = document.getElementById('playerNum').value.trim();
   const name = document.getElementById('playerName').value.trim();
   const cap = document.getElementById('playerCap').checked;
   if (!name) { showToast('Zadejte jméno hráče!'); return; }
-  state.rosters[state.rosterTeam].push({ id: ++state.playerId, num: num||'?', name, cap });
-  document.getElementById('playerNum').value = '';
-  document.getElementById('playerName').value = '';
-  document.getElementById('playerCap').checked = false;
-  renderRosters(); updatePlayerSelects();
-  showToast(`✅ ${name} přidán`);
-  if (state.rosterTeam === 'A' && currentMatchId) {
-    if (confirm(`Přidat ${name} také do trvalé soupravy klubu?`)) {
-      addPlayerToClub(num||'?', name, cap);
+  const team = state.rosterTeam;
+  try {
+    let id = `local-player-${++state.playerId}`;
+    if (currentMatchId) {
+      setSyncDot('saving');
+      const { data, error } = await sb.from('players').insert({
+        match_id: currentMatchId, team, num: num||'?', name, is_captain: cap
+      }).select('id').single();
+      if (error) throw error;
+      id = data.id;
     }
-  }
-  if (currentMatchId) {
-    sb.from('players').insert({ match_id: currentMatchId, team: state.rosterTeam, num: num||'?', name, is_captain: cap });
+    if (!state.rosters[team].some(player => String(player.id) === String(id))) {
+      state.rosters[team].push({ id, num:num||'?', name, cap });
+    }
+    document.getElementById('playerNum').value = '';
+    document.getElementById('playerName').value = '';
+    document.getElementById('playerCap').checked = false;
+    renderRosters(); updatePlayerSelects();
+    setSyncDot(currentMatchId ? 'ok' : 'off');
+    showToast(`✅ ${name} přidán`);
+    if (team === 'A' && currentMatchId && confirm(`Přidat ${name} také do trvalé soupravy klubu?`)) {
+      await addPlayerToClub(num||'?', name, cap, selectedTeamId(team));
+    }
+  } catch (error) {
+    setSyncDot('error');
+    showToast('Hráče se nepodařilo uložit.');
+    console.warn('Player save failed:', error);
   }
 }
 
-function removePlayer(team, id) {
-  state.rosters[team] = state.rosters[team].filter(p => p.id !== id);
+async function removePlayer(team, id) {
+  const player = state.rosters[team].find(p => String(p.id) === String(id));
+  if (!player) return;
+  state.rosters[team] = state.rosters[team].filter(p => String(p.id) !== String(id));
   renderRosters(); updatePlayerSelects();
-  if (currentMatchId) sb.from('players').delete().eq('id', id);
+  if (currentMatchId && !String(id).startsWith('local-')) {
+    const { error } = await sb.from('players').delete().eq('id', id).eq('match_id', currentMatchId);
+    if (error) {
+      state.rosters[team].push(player);
+      renderRosters(); updatePlayerSelects();
+      showToast('Hráče se nepodařilo odebrat.');
+    }
+  }
 }
 
 // ── PERIOD ──
-function changePeriod(d) {
+async function changePeriod(d) {
+  const penaltySnapshot = state.penalties.map(p => ({ ...p }));
   state.period = Math.max(1, Math.min(5, state.period + d));
   document.getElementById('periodDisplay').textContent = PERIODS[state.period];
   stopClockLocal();
   state.clock.seconds = state.period >= 4 ? 5*60 : 20*60;
+  state.clock.startSeconds = state.clock.seconds;
   renderClock();
-  saveMatchState();
+  await Promise.all([syncActivePenalties(penaltySnapshot), saveMatchState()]);
 }
 
 // ─── AUTOSAVE fallback ────────────────────────────────────────────────────────
@@ -1892,8 +2325,8 @@ async function refreshClubRosterPanel() {
         <span class="player-name${p.is_captain?' cap':''}">${esc(p.name)}</span>
         <span style="font-size:9px;color:var(--muted);margin-left:auto;margin-right:6px;">${p.active ? 'aktivní' : 'neaktivní'}</span>
         ${p.active
-          ? `<button class="del-btn" onclick="deactivateClubPlayer('${p.id}','${esc(p.name)}')" title="Odebrat ze soupravy">✕</button>`
-          : `<button style="background:none;border:1px solid var(--line2);border-radius:4px;color:var(--muted);font-size:9px;padding:2px 5px;cursor:pointer;font-family:'Inter',sans-serif;" onclick="reactivateClubPlayer('${p.id}','${esc(p.name)}')">obnovit</button>`
+          ? `<button class="del-btn" onclick="deactivateClubPlayer(${jsString(p.id)},${jsString(p.name)})" title="Odebrat ze soupravy">✕</button>`
+          : `<button style="background:none;border:1px solid var(--line2);border-radius:4px;color:var(--muted);font-size:9px;padding:2px 5px;cursor:pointer;font-family:'Inter',sans-serif;" onclick="reactivateClubPlayer(${jsString(p.id)},${jsString(p.name)})">obnovit</button>`
         }
       </div>`).join('');
   } catch(e) {
@@ -1902,9 +2335,14 @@ async function refreshClubRosterPanel() {
 }
 
 async function reactivateClubPlayer(id, name) {
-  await sb.from('club_roster').update({ active: true }).eq('id', id);
-  showToast(`✅ ${name} obnoven`);
-  refreshClubRosterPanel();
+  try {
+    const { error } = await sb.from('club_roster').update({ active: true }).eq('id', id);
+    if (error) throw error;
+    showToast(`✅ ${name} obnoven`);
+    await refreshClubRosterPanel();
+  } catch (error) {
+    showToast('Hráče se nepodařilo obnovit: ' + error.message);
+  }
 }
 
 // ─── KLUB SOUPISKA (Supabase club_roster) ────────────────────────────────────
@@ -1918,23 +2356,43 @@ async function loadClubRoster(team = 'A', silent = false) {
     const selId = team === 'A' ? 'teamAName' : 'teamBName';
     const sel = document.getElementById(selId);
     const selectedOption = sel?.options[sel.selectedIndex];
-    const teamId = selectedOption?.dataset?.id || null;
+    let teamId = selectedOption?.dataset?.id || null;
 
     let query = sb.from('club_roster').select('*').eq('active', true).order('num');
     if (teamId) {
       query = query.eq('team_id', teamId);
-    } else {
+    } else if (team === 'A') {
       // Fallback — žádný tým vybrán, načti domácí (is_home)
-      const { data: homeTeam } = await sb.from('teams').select('id').eq('is_home', true).eq('active', true).single().catch(() => ({ data: null }));
-      if (homeTeam?.id) query = query.eq('team_id', homeTeam.id);
+      const { data: homeTeam, error: homeError } = await sb.from('teams').select('id').eq('is_home', true).eq('active', true).limit(1).maybeSingle();
+      if (homeError) throw homeError;
+      teamId = homeTeam?.id || null;
+      if (teamId) query = query.eq('team_id', teamId);
+    } else {
+      state.rosters[team] = [];
+      renderRosters(); updatePlayerSelects();
+      if (currentMatchId) await syncRosterToDb(team);
+      setSyncDot('ok');
+      return false;
+    }
+
+    // Bez konkrétního týmu nikdy nenačítat hráče všech klubů dohromady.
+    if (!teamId) {
+      state.rosters[team] = [];
+      renderRosters(); updatePlayerSelects();
+      if (currentMatchId) await syncRosterToDb(team);
+      setSyncDot('ok');
+      return false;
     }
 
     const { data, error } = await query;
     if (error) throw error;
     if (!data || data.length === 0) {
+      state.rosters[team] = [];
+      renderRosters(); updatePlayerSelects();
+      if (currentMatchId) await syncRosterToDb(team);
       if (!silent) showToast('📋 Soupiska pro tento tým je prázdná — přidejte hráče v Admin → Hráči');
       setSyncDot('ok');
-      return;
+      return false;
     }
     state.rosters[team] = data.map(p => ({
       id: p.id, num: p.num, name: p.name, cap: p.is_captain, goalie: p.is_goalie
@@ -1943,7 +2401,8 @@ async function loadClubRoster(team = 'A', silent = false) {
     renderRosters(); updatePlayerSelects();
     if (!silent) showToast(`⚡ Soupiska načtena (${data.length} hráčů)`);
     setSyncDot('ok');
-    if (currentMatchId) syncRosterToDb(team);
+    if (currentMatchId && !await syncRosterToDb(team)) return false;
+    return true;
   } catch(e) {
     setSyncDot('error');
     if (!silent) showToast('❌ Chyba načítání soupravy: ' + e.message);
@@ -1952,10 +2411,19 @@ async function loadClubRoster(team = 'A', silent = false) {
 }
 
 // Přidat hráče do trvalé soupravy klubu
-async function addPlayerToClub(num, name, cap) {
+function selectedTeamId(team) {
+  const select = document.getElementById(team === 'A' ? 'teamAName' : 'teamBName');
+  return select?.options[select.selectedIndex]?.dataset?.id || null;
+}
+
+async function addPlayerToClub(num, name, cap, teamId = selectedTeamId('A')) {
+  if (!teamId) {
+    showToast('Nejdřív vyberte tým, ke kterému hráč patří.');
+    return false;
+  }
   try {
     const { error } = await sb.from('club_roster')
-      .insert({ num, name, is_captain: cap, active: true });
+      .insert({ num, name, is_captain: cap, team_id: teamId, active: true });
     if (error) throw error;
     showToast(`✅ ${name} přidán do soupravy klubu`);
     return true;
@@ -1969,7 +2437,8 @@ async function addPlayerToClub(num, name, cap) {
 async function deactivateClubPlayer(id, name) {
   if (!confirm(`Odebrat ${name} ze soupravy klubu?`)) return;
   try {
-    await sb.from('club_roster').update({ active: false }).eq('id', id);
+    const { error } = await sb.from('club_roster').update({ active: false }).eq('id', id);
+    if (error) throw error;
     showToast(`🗑 ${name} odebrán ze soupravy`);
     await loadClubRoster(state.rosterTeam, true);
   } catch(e) { showToast('❌ Chyba: ' + e.message); }
@@ -1980,26 +2449,52 @@ async function loadDefaultRoster() {
   const hasA = state.rosters['A'].length > 0;
   const hasB = state.rosters['B'].length > 0;
   if ((hasA || hasB) && !confirm(`Přepsat stávající soupisky?`)) return;
-  await Promise.all([loadClubRoster('A', true), loadClubRoster('B', true)]);
-  showToast(`⚡ Obě soupisky načteny`);
+  const loaded = await Promise.all([loadClubRoster('A', true), loadClubRoster('B', true)]);
+  const count = loaded.filter(Boolean).length;
+  showToast(count === 2 ? '⚡ Obě soupisky načteny' : count === 1 ? '⚡ Načtena jedna dostupná soupiska' : 'Pro vybrané týmy nejsou uložené soupisky');
 }
 
 
-function clearRoster(team) {
+async function clearRoster(team) {
   if (!state.rosters[team].length) return;
   if (!confirm(`Vymazat celou soupisku (${state.rosters[team].length} hráčů)?`)) return;
-  const ids = state.rosters[team].map(p => p.id);
+  const previous = [...state.rosters[team]];
   state.rosters[team] = [];
   renderRosters(); updatePlayerSelects();
-  if (currentMatchId) ids.forEach(id => sb.from('players').delete().eq('id', id));
+  if (currentMatchId) {
+    const { error } = await sb.from('players').delete().eq('match_id', currentMatchId).eq('team', team);
+    if (error) {
+      state.rosters[team] = previous;
+      renderRosters(); updatePlayerSelects();
+      showToast('Soupisku se nepodařilo vymazat.');
+    }
+  }
 }
 
 async function syncRosterToDb(team) {
-  if (!currentMatchId) return;
+  if (!currentMatchId) return true;
+  const matchId = currentMatchId;
+  const snapshot = state.rosters[team].map(player => ({ ...player }));
   // Delete existing players for this team then re-insert
-  await sb.from('players').delete().eq('match_id', currentMatchId).eq('team', team);
-  const rows = state.rosters[team].map(p => ({ match_id: currentMatchId, team, num: p.num, name: p.name, is_captain: p.cap }));
-  if (rows.length) await sb.from('players').insert(rows);
+  const { error: deleteError } = await sb.from('players').delete().eq('match_id', matchId).eq('team', team);
+  if (deleteError) {
+    setSyncDot('error');
+    console.warn('Roster delete failed:', deleteError);
+    return false;
+  }
+  if (!snapshot.length) return true;
+  const rows = snapshot.map(p => ({ match_id: matchId, team, num:p.num, name:p.name, is_captain:p.cap }));
+  const { data, error: insertError } = await sb.from('players').insert(rows).select('id,num,name,is_captain');
+  if (insertError) {
+    setSyncDot('error');
+    console.warn('Roster insert failed:', insertError);
+    return false;
+  }
+  if (currentMatchId === matchId) {
+    state.rosters[team] = (data || []).map(p => ({ id:p.id, num:p.num, name:p.name, cap:p.is_captain }));
+    renderRosters(); updatePlayerSelects();
+  }
+  return true;
 }
 
 // ─── CSV / EXCEL IMPORT ───────────────────────────────────────────────────────
@@ -2069,8 +2564,9 @@ function parseAndLoadCsv(text) {
   showToast(`📂 Import: ${players.length} hráčů načteno`);
   if (currentMatchId) syncRosterToDb(team);
   // Nabídnout uložení do trvalé soupravy klubu
-  if (team === 'A' && confirm(`Uložit ${players.length} hráčů také do trvalé soupravy klubu?\n(Přepíše stávající soupisku klubu)`)) {
-    saveImportToClubRoster(players);
+  const clubTeamId = selectedTeamId(team);
+  if (team === 'A' && clubTeamId && confirm(`Uložit ${players.length} hráčů také do trvalé soupravy klubu?\n(Přepíše soupisku pouze vybraného týmu)`)) {
+    saveImportToClubRoster(players, clubTeamId);
   }
 }
 
@@ -2084,12 +2580,13 @@ function showImportStatus(msg) {
   el._t = setTimeout(() => { el.style.display = 'none'; }, 5000);
 }
 
-async function saveImportToClubRoster(players) {
+async function saveImportToClubRoster(players, teamId) {
   try {
-    // Deactivate all current
-    await sb.from('club_roster').update({ active: false }).neq('id', '00000000-0000-0000-0000-000000000000');
-    // Insert new
-    const rows = players.map(p => ({ num: p.num, name: p.name, is_captain: p.cap, active: true }));
+    if (!teamId) throw new Error('Není vybraný tým.');
+    // Deaktivovat pouze soupisku právě vybraného týmu.
+    const { error: deactivateError } = await sb.from('club_roster').update({ active: false }).eq('team_id', teamId);
+    if (deactivateError) throw deactivateError;
+    const rows = players.map(p => ({ num:p.num, name:p.name, is_captain:p.cap, team_id:teamId, active:true }));
     const { error } = await sb.from('club_roster').insert(rows);
     if (error) throw error;
     showToast(`✅ ${players.length} hráčů uloženo do soupravy klubu`);
@@ -2204,8 +2701,8 @@ async function renderTeamsList() {
         </div>
         <div style="display:flex;gap:5px;flex-shrink:0;">
           ${t.active
-            ? `<button class="del-btn" onclick="deleteTeam('${t.id}','${esc(t.name)}')" title="Smazat tým">✕</button>`
-            : `<button style="background:none;border:1px solid var(--line2);border-radius:4px;color:var(--muted);font-size:9px;padding:2px 6px;cursor:pointer;font-family:'Inter',sans-serif;" onclick="restoreTeam('${t.id}')">obnovit</button>`
+            ? `<button class="del-btn" onclick="deleteTeam(${jsString(t.id)},${jsString(t.name)})" title="Smazat tým">✕</button>`
+            : `<button style="background:none;border:1px solid var(--line2);border-radius:4px;color:var(--muted);font-size:9px;padding:2px 6px;cursor:pointer;font-family:'Inter',sans-serif;" onclick="restoreTeam(${jsString(t.id)})">obnovit</button>`
           }
         </div>
       </div>`).join('');
@@ -2222,8 +2719,9 @@ async function addTeam() {
   const isHome = document.getElementById('newTeamIsHome').checked;
   if (!name) { showToast('Zadejte název týmu!'); return; }
   try {
-    const { error } = await sb.from('teams').insert({ name, short: short || null, arena: arena || null, color, is_home: isHome, active: true });
+    const { data: created, error } = await sb.from('teams').insert({ name, short: short || null, arena: arena || null, color, is_home: false, active: true }).select('id').single();
     if (error) throw error;
+    if (isHome) await setOperatorHomeTeam(created.id);
     document.getElementById('newTeamName').value = '';
     document.getElementById('newTeamShort').value = '';
     document.getElementById('newTeamArena').value = '';
@@ -2236,51 +2734,60 @@ async function addTeam() {
 
 async function deleteTeam(id, name) {
   if (!confirm(`Smazat tým "${name}"?`)) return;
-  await sb.from('teams').update({ active: false }).eq('id', id);
-  showToast(`🗑 ${name} smazán`);
-  await loadTeams();
-  renderTeamsList();
+  try {
+    const { error } = await sb.from('teams').update({ active: false }).eq('id', id);
+    if (error) throw error;
+    showToast(`🗑 ${name} smazán`);
+    await loadTeams();
+    await renderTeamsList();
+  } catch (error) {
+    showToast('Tým se nepodařilo skrýt: ' + error.message);
+  }
 }
 
 async function restoreTeam(id) {
-  await sb.from('teams').update({ active: true }).eq('id', id);
-  showToast('✅ Tým obnoven');
-  await loadTeams();
-  renderTeamsList();
+  try {
+    const { error } = await sb.from('teams').update({ active: true }).eq('id', id);
+    if (error) throw error;
+    showToast('✅ Tým obnoven');
+    await loadTeams();
+    await renderTeamsList();
+  } catch (error) {
+    showToast('Tým se nepodařilo obnovit: ' + error.message);
+  }
+}
+
+async function setOperatorHomeTeam(id) {
+  const clearResult = await sb.from('teams').update({ is_home: false }).neq('id', id).eq('is_home', true);
+  if (clearResult.error) throw clearResult.error;
+  const setResult = await sb.from('teams').update({ is_home: true }).eq('id', id);
+  if (setResult.error) throw setResult.error;
 }
 
 // ─── INIT ─────────────────────────────────────────────────────────────────────
-document.getElementById('penOptA').classList.add('active');
-document.getElementById('penOptB').classList.remove('active');
-renderClock(); updateScoreboard(); setSyncDot('off');
+async function initOperatorApp() {
+  document.getElementById('penOptA').classList.add('active');
+  document.getElementById('penOptB').classList.remove('active');
+  renderClock();
+  updateScoreboard();
+  setSyncDot('off');
+  await loadTeams();
+  await renderMatchList();
 
-// Load teams into selectors
-loadTeams();
-// Load match list for sidebar (desktop always visible)
-renderMatchList();
-
-// Try to restore last match session
-// Pořadí: 1) URL parametr ?match=KOD  2) localStorage
-(async () => {
+  // Obnovit zápas z URL parametru ?match=KOD.
   try {
-    // URL parametr má přednost — funguje vždy, i po refreshi na mobilu
     const urlParams = new URLSearchParams(window.location.search);
     const urlCode = urlParams.get('match');
-
     let matchId = null, code = null;
 
     if (urlCode) {
-      // Načíst zápas podle kódu z URL
       code = urlCode.toUpperCase();
       const { data } = await sb.from('matches').select('id, code').eq('code', code).single();
       if (data) matchId = data.id;
     }
 
-    // Bez URL kódu — nezkoušíme localStorage, uživatel je na čisté stránce
-
     if (matchId && code) {
-      await loadMatch(matchId, code);
-      // Přidat kód do URL aby refresh vždy obnovil správný zápas
+      if (!await loadMatch(matchId, code)) return;
       const newUrl = new URL(window.location.href);
       newUrl.searchParams.set('match', code);
       window.history.replaceState({}, '', newUrl);
@@ -2288,7 +2795,16 @@ renderMatchList();
       renderMatchList();
     }
   } catch(e) { console.warn('Auto-restore failed:', e); }
-})();
+}
+
+window.AxonoAuth.getSession()
+  .then(showOperatorApp)
+  .catch(() => showOperatorLogin());
+
+window.AxonoAuth.onChange(session => {
+  if (session) showOperatorApp(session);
+  else showOperatorLogin();
+});
 </script>
 </body>
 </html>

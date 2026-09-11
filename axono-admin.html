@@ -45,6 +45,10 @@
     transition: border-color 0.2s;
   }
   .pin-input:focus { border-color: var(--red); }
+  .pin-input.login-field {
+    font-family: 'Inter', sans-serif; font-size: 14px; letter-spacing: 0;
+    text-align: left; padding: 12px 14px;
+  }
   .pin-btn {
     background: var(--red); border: none; border-radius: 10px; color: #fff;
     font-family: 'Bebas Neue', sans-serif; font-size: 16px; letter-spacing: 3px;
@@ -201,21 +205,23 @@
   .stat-row:last-child { border-bottom: none; }
   .stat-val { font-family: 'Bebas Neue', sans-serif; font-size: 18px; color: var(--red); }
 </style>
+<link rel="stylesheet" href="/axono-ui.css">
 </head>
 <body>
 
-<!-- PIN SCREEN -->
+<!-- LOGIN SCREEN -->
 <div id="pinScreen">
   <div class="pin-logo">
     <img src="/logo.png" alt="AXONO" onerror="this.outerHTML='<span style=\'font-family:Bebas Neue,sans-serif;font-size:36px;letter-spacing:6px;color:var(--dark)\'>AXONO</span>'">
   </div>
   <div class="pin-badge">ADMIN</div>
   <div class="pin-box">
-    <div class="pin-label">ZADEJTE ADMIN PIN</div>
-    <input class="pin-input" type="password" id="pinInput" placeholder="••••" maxlength="10"
-      onkeydown="if(event.key==='Enter') verifyPin()" />
-    <button class="pin-btn" onclick="verifyPin()">VSTOUPIT</button>
-    <div class="pin-error" id="pinError">Nesprávný PIN</div>
+    <div class="pin-label">PŘIHLÁŠENÍ SPRÁVCE</div>
+    <input class="pin-input login-field" type="email" id="loginEmail" placeholder="E-mail" autocomplete="username" />
+    <input class="pin-input login-field" type="password" id="loginPassword" placeholder="Heslo" autocomplete="current-password"
+      onkeydown="if(event.key==='Enter') signInAdmin()" />
+    <button class="pin-btn" id="loginButton" onclick="signInAdmin()">PŘIHLÁSIT</button>
+    <div class="pin-error" id="pinError">Přihlášení se nezdařilo.</div>
   </div>
 </div>
 
@@ -235,11 +241,11 @@
     </div>
   </header>
 
-  <nav class="a-nav">
-    <button class="a-nav-tab active" onclick="showTab('matches')">📅 ZÁPASY</button>
-    <button class="a-nav-tab" onclick="showTab('teams')">🏒 TÝMY</button>
-    <button class="a-nav-tab" onclick="showTab('players')">👤 HRÁČI</button>
-    <button class="a-nav-tab" onclick="showTab('settings')">⚙ NASTAVENÍ</button>
+  <nav class="a-nav" role="tablist" aria-label="Administrace">
+    <button class="a-nav-tab active" role="tab" aria-selected="true" onclick="showTab('matches')">📅 ZÁPASY</button>
+    <button class="a-nav-tab" role="tab" aria-selected="false" onclick="showTab('teams')">🏒 TÝMY</button>
+    <button class="a-nav-tab" role="tab" aria-selected="false" onclick="showTab('players')">👤 HRÁČI</button>
+    <button class="a-nav-tab" role="tab" aria-selected="false" onclick="showTab('settings')">⚙ NASTAVENÍ</button>
   </nav>
 
   <main class="a-content">
@@ -299,7 +305,7 @@
               <div class="a-label">Název týmu</div>
               <input class="a-field" id="tName" placeholder="HC Axono Patriots" maxlength="40" />
             </div>
-            <div class="a-field-row">
+            <div class="a-field-row a-compact-row">
               <div style="flex:1">
                 <div class="a-label">Zkratka</div>
                 <input class="a-field" id="tShort" placeholder="HBC" maxlength="8" />
@@ -313,7 +319,7 @@
               <div class="a-label">Domácí aréna</div>
               <input class="a-field" id="tArena" placeholder="Zimní stadion Axono" maxlength="60" />
             </div>
-            <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);cursor:pointer;">
+            <label class="a-check-row">
               <input type="checkbox" id="tIsHome" style="accent-color:var(--red);width:15px;height:15px;" />
               Náš tým (domácí) — načítá se automaticky
             </label>
@@ -332,8 +338,9 @@
 
     <!-- ── HRÁČI ── -->
     <div class="a-tab-panel" id="panel-players">
-      <div style="background:#fff8e1;border:1.5px solid #ffe082;border-radius:10px;padding:11px 14px;margin-bottom:14px;font-size:12px;color:#7a6000;font-family:'Inter',sans-serif;line-height:1.6;">
-        ℹ️ Toto je <strong>trvalá soupiska klubu</strong> (club_roster). Hráči se automaticky načtou do domácího týmu při novém zápase. Hráči přidaní přímo v SYNC jsou uloženi pouze pro daný zápas.
+      <div class="a-info" style="background:#fff8e1;border:1.5px solid #ffe082;border-radius:10px;padding:11px 14px;margin-bottom:14px;font-size:12px;color:#7a6000;font-family:'Inter',sans-serif;line-height:1.6;">
+        <span class="inline-icon-text">ℹ️</span>
+        <span>Toto je <strong>trvalá soupiska klubu</strong> (club_roster). Hráči se automaticky načtou do domácího týmu při novém zápase. Hráči přidaní přímo v SYNC jsou uloženi pouze pro daný zápas.</span>
       </div>
       <div class="a-grid">
         <div class="a-card">
@@ -343,7 +350,7 @@
               <div class="a-label">Tým</div>
               <select class="a-field" id="pTeam"><option value="">— vyberte tým —</option></select>
             </div>
-            <div class="a-field-row">
+            <div class="a-field-row a-player-row">
               <div style="max-width:80px;">
                 <div class="a-label">Číslo</div>
                 <input class="a-field" id="pNum" type="number" min="1" max="99" placeholder="#" />
@@ -353,11 +360,11 @@
                 <input class="a-field" id="pName" placeholder="Jan Novák" maxlength="40" />
               </div>
             </div>
-            <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);cursor:pointer;">
+            <label class="a-check-row">
               <input type="checkbox" id="pCap" style="accent-color:var(--red);width:15px;height:15px;" />
               Kapitán
             </label>
-            <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);cursor:pointer;">
+            <label class="a-check-row">
               <input type="checkbox" id="pGoalie" style="accent-color:#1565c0;width:15px;height:15px;" />
               Gólman
             </label>
@@ -377,18 +384,10 @@
     <!-- ── NASTAVENÍ ── -->
     <div class="a-tab-panel" id="panel-settings">
       <div class="a-card" style="max-width:440px;">
-        <div class="a-card-title">ADMIN PIN</div>
-        <div class="a-form">
-          <div>
-            <div class="a-label">Nový PIN</div>
-            <input class="a-field" type="password" id="newPin" placeholder="min. 4 znaky" maxlength="20" />
-          </div>
-          <div>
-            <div class="a-label">Potvrdit PIN</div>
-            <input class="a-field" type="password" id="newPinConfirm" placeholder="zopakujte PIN" maxlength="20" />
-          </div>
-          <button class="a-btn primary" onclick="changePin()">💾 ULOŽIT PIN</button>
-          <div id="pinChangeMsg" style="font-size:12px;color:var(--green);display:none;">✓ PIN byl změněn</div>
+        <div class="a-card-title">PŘIHLÁŠENÝ ÚČET</div>
+        <div style="font-size:13px;color:var(--muted);line-height:1.7;font-family:'Inter',sans-serif;">
+          <div class="stat-row"><span>E-mail</span><span id="adminEmail" style="font-weight:600;color:var(--dark);">—</span></div>
+          <p style="margin-top:12px;">Účty a hesla se spravují v Supabase Authentication. Administrační PIN už aplikace nepoužívá.</p>
         </div>
       </div>
       <div class="a-card" style="max-width:440px;">
@@ -398,7 +397,7 @@
           <div class="stat-row"><span>Databáze</span><span id="dbStatus" style="font-weight:600;">—</span></div>
           <div class="stat-row"><span>Zápasů celkem</span><span id="totalMatches" class="stat-val">—</span></div>
           <div class="stat-row"><span>Týmů</span><span id="totalTeams" class="stat-val">—</span></div>
-          <div class="stat-row"><span>Hráčů v soupisku</span><span id="totalPlayers" class="stat-val">—</span></div>
+          <div class="stat-row"><span>Hráčů v soupisce</span><span id="totalPlayers" class="stat-val">—</span></div>
         </div>
       </div>
     </div>
@@ -508,42 +507,67 @@
   </div>
 </div>
 
-<div class="a-toast" id="aToast"></div>
+<div class="a-toast" id="aToast" role="status" aria-live="polite"></div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="/supabase.min.js"></script>
+<script src="/axono-config.js"></script>
+<script src="/axono-client.js"></script>
+<script src="/axono-icons.js"></script>
 <script>
-const SUPABASE_URL = 'https://wdwmjjbcphntymodnbub.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indkd21qamJjcGhudHltb2RuYnViIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMyMjk0NDQsImV4cCI6MjA4ODgwNTQ0NH0.5Er4or14JJZveXexxO7XCaRIhguZ3FHuLWDJbyzB0oU';
-const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const sb = window.axonoSupabase;
 
-// ─── PIN ──────────────────────────────────────────────────────────────────────
-async function verifyPin() {
-  const input = document.getElementById('pinInput').value.trim();
-  if (!input) return;
+// ─── AUTH ─────────────────────────────────────────────────────────────────────
+let adminInitialized = false;
+
+async function signInAdmin() {
+  const email = document.getElementById('loginEmail').value.trim();
+  const password = document.getElementById('loginPassword').value;
+  const button = document.getElementById('loginButton');
+  const errorEl = document.getElementById('pinError');
+  if (!email || !password) {
+    errorEl.textContent = 'Vyplňte e-mail a heslo.';
+    errorEl.style.display = 'block';
+    return;
+  }
+
+  button.disabled = true;
+  button.textContent = 'PŘIHLAŠUJI…';
+  errorEl.style.display = 'none';
   try {
-    const { data } = await sb.from('settings').select('value').eq('key', 'admin_pin').single();
-    const correct = data?.value || '1234';
-    if (input === correct) {
-      sessionStorage.setItem('axono_admin', '1');
-      document.getElementById('pinScreen').classList.add('hidden');
-      document.getElementById('adminApp').classList.add('visible');
-      initAdmin().then(restoreTabFromHash);
-    } else {
-      const err = document.getElementById('pinError');
-      err.style.display = 'block';
-      document.getElementById('pinInput').value = '';
-      setTimeout(() => err.style.display = 'none', 2500);
-    }
+    const session = await window.AxonoAuth.signIn(email, password);
+    await showAdmin(session);
+    document.getElementById('loginPassword').value = '';
   } catch(e) {
-    toast('Chyba připojení k DB', 'err');
+    errorEl.textContent = 'Nesprávný e-mail nebo heslo.';
+    errorEl.style.display = 'block';
+  } finally {
+    button.disabled = false;
+    button.textContent = 'PŘIHLÁSIT';
   }
 }
 
-function logout() {
-  sessionStorage.removeItem('axono_admin');
+async function showAdmin(session) {
+  if (!session) return showAdminLogin();
+  document.getElementById('pinScreen').classList.add('hidden');
+  document.getElementById('adminApp').classList.add('visible');
+  const emailEl = document.getElementById('adminEmail');
+  if (emailEl) emailEl.textContent = session.user?.email || 'Přihlášený uživatel';
+  if (!adminInitialized) {
+    adminInitialized = true;
+    await initAdmin();
+    restoreTabFromHash();
+  }
+}
+
+function showAdminLogin() {
   document.getElementById('pinScreen').classList.remove('hidden');
   document.getElementById('adminApp').classList.remove('visible');
-  document.getElementById('pinInput').value = '';
+  adminInitialized = false;
+}
+
+async function logout() {
+  try { await window.AxonoAuth.signOut(); }
+  finally { showAdminLogin(); }
 }
 
 // ─── INIT ─────────────────────────────────────────────────────────────────────
@@ -555,13 +579,19 @@ async function initAdmin() {
 // ─── TABS ─────────────────────────────────────────────────────────────────────
 function showTab(name, fromHash) {
   document.querySelectorAll('.a-tab-panel').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.a-nav-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.a-nav-tab').forEach(t => {
+    t.classList.remove('active');
+    t.setAttribute('aria-selected', 'false');
+  });
   const panel = document.getElementById('panel-' + name);
   if (!panel) return;
   panel.classList.add('active');
   // Aktivovat správné tlačítko v nav
   document.querySelectorAll('.a-nav-tab').forEach(t => {
-    if (t.getAttribute('onclick') && t.getAttribute('onclick').includes("'" + name + "'")) t.classList.add('active');
+    if (t.getAttribute('onclick') && t.getAttribute('onclick').includes("'" + name + "'")) {
+      t.classList.add('active');
+      t.setAttribute('aria-selected', 'true');
+    }
   });
   if (!fromHash) window.location.hash = name;
 }
@@ -585,7 +615,8 @@ let matchesCache = [];
 
 async function loadMatches() {
   try {
-    const { data } = await sb.from('matches').select('*').order('scheduled_at', { ascending: false, nullsFirst: false }).order('created_at', { ascending: false });
+    const { data, error } = await sb.from('matches').select('*').order('scheduled_at', { ascending: false, nullsFirst: false }).order('created_at', { ascending: false });
+    if (error) throw error;
     matchesCache = data || [];
     renderMatchesTable();
     renderMatchStats();
@@ -606,17 +637,17 @@ function renderMatchesTable() {
       ? `<span class="a-badge-past">ODEHRÁNO</span>`
       : `<span class="a-badge-upcoming">PLÁNOVÁNO</span>`;
     return `<tr>
-      <td><strong style="font-family:'Bebas Neue',sans-serif;letter-spacing:1px;">${m.code}</strong></td>
-      <td style="white-space:nowrap;">${dateStr} ${badge}</td>
-      <td>${esc(m.team_a_name||'—')}</td>
-      <td>${esc(m.team_b_name||'—')}</td>
-      <td style="font-family:'Bebas Neue',sans-serif;font-size:16px;">${m.score_a} : ${m.score_b}</td>
-      <td>${m.period <= 3 ? m.period+'. třetina' : m.period === 4 ? 'Prodl.' : 'Nájezdy'}</td>
-      <td>
+      <td data-label="Kód"><strong style="font-family:'Bebas Neue',sans-serif;letter-spacing:1px;">${m.code}</strong></td>
+      <td data-label="Datum" style="white-space:nowrap;">${dateStr} ${badge}</td>
+      <td data-label="Domácí">${esc(m.team_a_name||'—')}</td>
+      <td data-label="Hosté">${esc(m.team_b_name||'—')}</td>
+      <td data-label="Skóre" style="font-family:'Bebas Neue',sans-serif;font-size:16px;">${m.score_a} : ${m.score_b}</td>
+      <td data-label="Část">${m.period <= 3 ? m.period+'. třetina' : m.period === 4 ? 'Prodl.' : 'Nájezdy'}</td>
+      <td data-label="Akce">
         <div class="td-actions">
-          <button class="a-btn secondary small" onclick="openEditMatch('${m.id}')">✎ edit</button>
-          <button class="a-btn secondary small" onclick="copyLive('${m.code}')" style="color:var(--green);border-color:rgba(0,178,72,0.3);">● live</button>
-          <button class="a-btn danger small" onclick="deleteMatch('${m.id}','${m.code}')">✕</button>
+          <button class="a-btn secondary small" onclick="openEditMatch(${jsString(m.id)})">✎ edit</button>
+          <button class="a-btn secondary small" onclick="copyLive(${jsString(m.code)})" style="color:var(--green);border-color:rgba(0,178,72,0.3);">● live</button>
+          <button class="a-btn danger small" onclick="deleteMatch(${jsString(m.id)},${jsString(m.code)})">✕</button>
         </div>
       </td>
     </tr>`;
@@ -636,18 +667,26 @@ function renderMatchStats() {
 }
 
 async function createMatch() {
-  const teamA = document.getElementById('mTeamA').value || 'DOMÁCÍ';
-  const teamB = document.getElementById('mTeamB').value || 'HOSTÉ';
+  const teamAId = document.getElementById('mTeamA').value;
+  const teamBId = document.getElementById('mTeamB').value;
+  const teamA = teamsCache.find(team => String(team.id) === String(teamAId))?.name || 'DOMÁCÍ';
+  const teamB = teamsCache.find(team => String(team.id) === String(teamBId))?.name || 'HOSTÉ';
   const dateVal = document.getElementById('mDate').value;
   const scheduledAt = dateVal ? new Date(dateVal).toISOString() : null;
-  const code = generateCode();
   try {
-    const { error } = await sb.from('matches').insert({
-      code, team_a_name: teamA, team_b_name: teamB,
-      score_a: 0, score_b: 0, period: 1, clock_seconds: 1200,
-      scheduled_at: scheduledAt
-    });
-    if (error) throw error;
+    let code = '';
+    let created = false;
+    for (let attempt = 0; attempt < 5 && !created; attempt++) {
+      code = generateCode();
+      const { error } = await sb.from('matches').insert({
+        code, team_a_name: teamA, team_b_name: teamB,
+        score_a: 0, score_b: 0, period: 1, clock_seconds: 1200,
+        scheduled_at: scheduledAt
+      });
+      if (!error) created = true;
+      else if (error.code !== '23505') throw error;
+    }
+    if (!created) throw new Error('Nepodařilo se vytvořit unikátní kód zápasu.');
     toast(`✅ Zápas ${code} vytvořen`, 'ok');
     document.getElementById('mDate').value = '';
     await loadMatches();
@@ -655,7 +694,7 @@ async function createMatch() {
 }
 
 function openEditMatch(id) {
-  const m = matchesCache.find(x => x.id === id);
+  const m = matchesCache.find(x => String(x.id) === String(id));
   if (!m) return;
   document.getElementById('editMatchId').value = m.id;
   document.getElementById('editScoreA').value = m.score_a;
@@ -682,7 +721,7 @@ async function saveEditMatch() {
   const id = document.getElementById('editMatchId').value;
   const dateVal = document.getElementById('editMatchDate').value;
   try {
-    await sb.from('matches').update({
+    const result = await sb.from('matches').update({
       team_a_name: document.getElementById('editMatchTeamA').value,
       team_b_name: document.getElementById('editMatchTeamB').value,
       score_a: parseInt(document.getElementById('editScoreA').value) || 0,
@@ -690,6 +729,7 @@ async function saveEditMatch() {
       scheduled_at: dateVal ? new Date(dateVal).toISOString() : null,
       updated_at: new Date().toISOString()
     }).eq('id', id);
+    if (result.error) throw result.error;
     toast('✅ Zápas uložen', 'ok');
     closeModal('editMatchModal');
     await loadMatches();
@@ -698,9 +738,21 @@ async function saveEditMatch() {
 
 async function deleteMatch(id, code) {
   if (!confirm(`Smazat zápas ${code}? Smažou se i góly a tresty.`)) return;
-  await sb.from('matches').delete().eq('id', id);
-  toast(`🗑 Zápas ${code} smazán`);
-  await loadMatches();
+  try {
+    const children = await Promise.all([
+      sb.from('goals').delete().eq('match_id', id),
+      sb.from('penalties').delete().eq('match_id', id),
+      sb.from('players').delete().eq('match_id', id)
+    ]);
+    const childError = children.find(result => result.error)?.error;
+    if (childError) throw childError;
+    const { error } = await sb.from('matches').delete().eq('id', id);
+    if (error) throw error;
+    toast(`🗑 Zápas ${code} smazán`);
+    await loadMatches();
+  } catch (error) {
+    toast('Zápas se nepodařilo smazat: ' + error.message, 'err');
+  }
 }
 
 function copyLive(code) {
@@ -713,7 +765,8 @@ let teamsCache = [];
 
 async function loadTeams() {
   try {
-    const { data } = await sb.from('teams').select('*').order('name');
+    const { data, error } = await sb.from('teams').select('*').order('name');
+    if (error) throw error;
     teamsCache = data || [];
     renderTeamsList();
     populateTeamSelects();
@@ -724,18 +777,19 @@ function renderTeamsList() {
   const el = document.getElementById('teamsList');
   const active = teamsCache.filter(t => t.active);
   document.getElementById('teamCount').textContent = active.length;
-  if (!active.length) { el.innerHTML = '<div class="empty-msg">Žádné týmy.</div>'; return; }
-  el.innerHTML = active.map(t => `
-    <div style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:9px;border:1.5px solid var(--line);margin-bottom:5px;background:var(--bg);">
+  if (!teamsCache.length) { el.innerHTML = '<div class="empty-msg">Žádné týmy.</div>'; return; }
+  const sorted = [...teamsCache].sort((a, b) => Number(b.active) - Number(a.active) || a.name.localeCompare(b.name, 'cs'));
+  el.innerHTML = sorted.map(t => `
+    <div style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:9px;border:1.5px solid var(--line);margin-bottom:5px;background:var(--bg);opacity:${t.active ? 1 : 0.48};">
       <span class="color-swatch" style="background:${t.color||'#ccc'};"></span>
       <div style="flex:1;min-width:0;">
         <div style="font-weight:600;font-size:13px;">${esc(t.name)}${t.short?' <span style="color:var(--muted);font-weight:400;">('+esc(t.short)+')</span>':''}</div>
-        ${t.arena ? `<div style="font-size:11px;color:var(--muted);">📍 ${esc(t.arena)}</div>` : ''}
+        ${t.arena ? `<div class="location-line" style="font-size:11px;color:var(--muted);">📍 ${esc(t.arena)}</div>` : ''}
         ${t.is_home ? `<div style="font-size:10px;color:var(--green);font-weight:600;">✓ NÁŠ TÝM</div>` : ''}
       </div>
       <div style="display:flex;gap:4px;">
-        <button class="a-btn secondary small" onclick="openEditTeam('${t.id}')">✎</button>
-        <button class="a-btn danger small" onclick="toggleTeam('${t.id}',false,'${esc(t.name)}')">✕</button>
+        ${t.active ? `<button class="a-btn secondary small" onclick="openEditTeam(${jsString(t.id)})">✎</button>` : ''}
+        <button class="a-btn ${t.active ? 'danger' : 'secondary'} small" onclick="toggleTeam(${jsString(t.id)},${!t.active},${jsString(t.name)})">${t.active ? '✕' : 'obnovit'}</button>
       </div>
     </div>
   `).join('');
@@ -764,8 +818,9 @@ async function addTeam() {
   const isHome = document.getElementById('tIsHome').checked;
   if (!name) { toast('Zadejte název týmu', 'err'); return; }
   try {
-    const { error } = await sb.from('teams').insert({ name, short: short||null, arena: arena||null, color, is_home: isHome, active: true });
+    const { data: created, error } = await sb.from('teams').insert({ name, short: short||null, arena: arena||null, color, is_home: false, active: true }).select('id').single();
     if (error) throw error;
+    if (isHome) await setHomeTeam(created.id);
     toast(`✅ Tým ${name} přidán`, 'ok');
     document.getElementById('tName').value = '';
     document.getElementById('tShort').value = '';
@@ -776,7 +831,7 @@ async function addTeam() {
 }
 
 function openEditTeam(id) {
-  const t = teamsCache.find(x => x.id === id);
+  const t = teamsCache.find(x => String(x.id) === String(id));
   if (!t) return;
   document.getElementById('editTeamId').value = t.id;
   document.getElementById('editTeamName').value = t.name;
@@ -792,29 +847,45 @@ async function saveEditTeam() {
   const name = document.getElementById('editTeamName').value.trim();
   if (!name) { toast('Zadejte název', 'err'); return; }
   try {
-    await sb.from('teams').update({
+    const isHome = document.getElementById('editTeamIsHome').checked;
+    const result = await sb.from('teams').update({
       name,
       short: document.getElementById('editTeamShort').value.trim().toUpperCase() || null,
       arena: document.getElementById('editTeamArena').value.trim() || null,
       color: document.getElementById('editTeamColor').value,
-      is_home: document.getElementById('editTeamIsHome').checked
+      is_home: false
     }).eq('id', id);
+    if (result.error) throw result.error;
+    if (isHome) await setHomeTeam(id);
     toast('✅ Tým uložen', 'ok');
     closeModal('editTeamModal');
     await loadTeams();
   } catch(e) { toast('Chyba: ' + e.message, 'err'); }
 }
 
+async function setHomeTeam(id) {
+  const clearResult = await sb.from('teams').update({ is_home: false }).neq('id', id).eq('is_home', true);
+  if (clearResult.error) throw clearResult.error;
+  const setResult = await sb.from('teams').update({ is_home: true }).eq('id', id);
+  if (setResult.error) throw setResult.error;
+}
+
 async function toggleTeam(id, active, name) {
-  if (!active) {
-    if (!confirm(`Smazat tým "${name}" trvale? Tato akce nelze vrátit.`)) return;
-    await sb.from('teams').delete().eq('id', id);
-    toast(`✕ Tým ${name} smazán`);
-  } else {
-    await sb.from('teams').update({ active: true }).eq('id', id);
-    toast(`✅ Tým ${name} obnoven`);
+  try {
+    if (!active) {
+      if (!confirm(`Skrýt tým "${name}"? Jeho historie zůstane zachovaná.`)) return;
+      const { error } = await sb.from('teams').update({ active: false }).eq('id', id);
+      if (error) throw error;
+      toast(`Tým ${name} skryt`);
+    } else {
+      const { error } = await sb.from('teams').update({ active: true }).eq('id', id);
+      if (error) throw error;
+      toast(`✅ Tým ${name} obnoven`, 'ok');
+    }
+    await loadTeams();
+  } catch (error) {
+    toast('Tým se nepodařilo změnit: ' + error.message, 'err');
   }
-  await loadTeams();
 }
 
 // ─── HRÁČI ────────────────────────────────────────────────────────────────────
@@ -845,11 +916,11 @@ function renderPlayersList() {
     <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:9px;border:1.5px solid var(--line);margin-bottom:4px;background:var(--bg);">
       <span style="font-family:'Bebas Neue',sans-serif;font-size:16px;color:var(--red);min-width:28px;">#${p.num||'?'}</span>
       <div style="flex:1;">
-        <div style="font-weight:600;font-size:13px;">${esc(p.name)}${p.is_captain?' 🅒':''}${p.is_goalie?' 🥅':''}</div>
+        <div style="font-weight:600;font-size:13px;display:flex;align-items:center;gap:6px;">${esc(p.name)}${p.is_captain?'<span class="role-badge">C</span>':''}${p.is_goalie?AxonoIcons.icon('goalie'):''}</div>
         <div style="font-size:10px;color:var(--muted);">${team ? esc(team.name) : '—'}</div>
       </div>
-      <button class="a-btn secondary small" onclick="openEditPlayer('${p.id}')">✎</button>
-      <button class="a-btn danger small" onclick="deletePlayer('${p.id}','${esc(p.name)}')">✕</button>
+      <button class="a-btn secondary small" onclick="openEditPlayer(${jsString(p.id)})">✎</button>
+      <button class="a-btn danger small" onclick="deletePlayer(${jsString(p.id)},${jsString(p.name)})">✕</button>
     </div>`;
   }).join('');
 }
@@ -884,13 +955,16 @@ async function addPlayer() {
 
 async function deletePlayer(id, name) {
   if (!confirm(`Smazat hráče "${name}"?`)) return;
-  await sb.from('club_roster').delete().eq('id', id);
-  toast(`✕ ${name} smazán`);
-  await loadPlayers();
+  try {
+    const { error } = await sb.from('club_roster').delete().eq('id', id);
+    if (error) throw error;
+    toast(`✕ ${name} smazán`);
+    await loadPlayers();
+  } catch (error) { toast('Hráče se nepodařilo smazat: ' + error.message, 'err'); }
 }
 
 function openEditPlayer(id) {
-  const p = playersCache.find(x => x.id === id);
+  const p = playersCache.find(x => String(x.id) === String(id));
   if (!p) return;
   document.getElementById('editPlayerId').value = p.id;
   document.getElementById('editPlayerNum').value = p.num || '';
@@ -912,38 +986,17 @@ async function saveEditPlayer() {
   const name = document.getElementById('editPlayerName').value.trim();
   if (!name) { toast('Zadejte jméno', 'err'); return; }
   try {
-    await sb.from('club_roster').update({
+    const result = await sb.from('club_roster').update({
       num: document.getElementById('editPlayerNum').value.trim() || null,
       name,
       is_captain: document.getElementById('editPlayerCap').checked,
       is_goalie: document.getElementById('editPlayerGoalie').checked,
       team_id: document.getElementById('editPlayerTeam').value || null
     }).eq('id', id);
+    if (result.error) throw result.error;
     toast('✅ Hráč uložen', 'ok');
     closeModal('editPlayerModal');
     await loadPlayers();
-  } catch(e) { toast('Chyba: ' + e.message, 'err'); }
-}
-
-// ─── NASTAVENÍ ────────────────────────────────────────────────────────────────
-async function changePin() {
-  const p1 = document.getElementById('newPin').value;
-  const p2 = document.getElementById('newPinConfirm').value;
-  if (!p1 || p1.length < 4) { toast('PIN musí mít min. 4 znaky', 'err'); return; }
-  if (p1 !== p2) { toast('PINy se neshodují', 'err'); return; }
-  try {
-    const { data } = await sb.from('settings').select('id').eq('key', 'admin_pin').single().catch(() => ({data:null}));
-    if (data) {
-      await sb.from('settings').update({ value: p1 }).eq('key', 'admin_pin');
-    } else {
-      await sb.from('settings').insert({ key: 'admin_pin', value: p1 });
-    }
-    document.getElementById('newPin').value = '';
-    document.getElementById('newPinConfirm').value = '';
-    const msg = document.getElementById('pinChangeMsg');
-    msg.style.display = 'block';
-    setTimeout(() => msg.style.display = 'none', 3000);
-    toast('✅ PIN změněn', 'ok');
   } catch(e) { toast('Chyba: ' + e.message, 'err'); }
 }
 
@@ -954,6 +1007,8 @@ async function loadStats() {
       sb.from('teams').select('id', { count: 'exact', head: true }).eq('active', true),
       sb.from('club_roster').select('id', { count: 'exact', head: true })
     ]);
+    const firstError = [m, t, p].find(result => result.error)?.error;
+    if (firstError) throw firstError;
     document.getElementById('totalMatches').textContent = m.count ?? '—';
     document.getElementById('totalTeams').textContent = t.count ?? '—';
     document.getElementById('totalPlayers').textContent = p.count ?? '—';
@@ -964,6 +1019,10 @@ async function loadStats() {
 
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
 function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function jsString(value) {
+  return JSON.stringify(String(value))
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
 
 function generateCode() {
   const a = 'ABCDEFGHJKLMNPQRSTUVWXYZ', n = '23456789';
@@ -984,11 +1043,14 @@ window.addEventListener('hashchange', () => {
   if (valid.includes(hash)) showTab(hash, true);
 });
 
-if (sessionStorage.getItem('axono_admin') === '1') {
-  document.getElementById('pinScreen').classList.add('hidden');
-  document.getElementById('adminApp').classList.add('visible');
-  initAdmin().then(restoreTabFromHash);
-}
+window.AxonoAuth.getSession()
+  .then(showAdmin)
+  .catch(() => showAdminLogin());
+
+window.AxonoAuth.onChange(session => {
+  if (session) showAdmin(session);
+  else showAdminLogin();
+});
 </script>
 </body>
 </html>
