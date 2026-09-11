@@ -22,6 +22,8 @@ body {
   background:
     linear-gradient(180deg, rgba(255,255,255,.72), transparent 260px),
     var(--bg);
+  font-size: 16px;
+  line-height: 1.45;
   -webkit-font-smoothing: antialiased;
 }
 body::before { background: radial-gradient(circle at 50% 0, rgba(210,10,46,.07), transparent 36rem); }
@@ -31,6 +33,42 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   outline: 3px solid rgba(210,10,46,.3);
   outline-offset: 2px;
 }
+
+/* Bebas Neue zůstává výrazovým písmem pro skóre, čas a nadpisy.
+   Ovládací prvky používají čitelnější Inter i v menších velikostech. */
+.sidebar-new-btn, .modal-btn, .ctrl-btn, .team-opt, .submit-btn, .pnav-btn,
+.clock-btn, .break-btn, .tab, .expire-btn, .undo-button, .connect-btn,
+.a-btn, .a-nav-tab, .a-link-btn, .a-logout, .pin-btn, .operator-login-btn,
+.session-bar button {
+  font-family: 'Inter', sans-serif !important;
+  font-size: 13px !important;
+  font-weight: 700;
+  letter-spacing: .035em !important;
+  line-height: 1.2;
+}
+.submit-btn, .clock-btn, .connect-btn, .operator-login-btn, .pin-btn {
+  font-size: 14px !important;
+}
+.section-title, .d-section-title, .a-card-title, .modal-title, .a-modal-title,
+.clock-display, .d-clock, .score-display, .d-score, .period-label, .d-period,
+.team-name-input, .d-team-name {
+  font-family: 'Bebas Neue', 'Arial Narrow', sans-serif;
+}
+.modal-label, .a-label { font-size: 13px !important; letter-spacing: .045em; }
+.entry-sub, .entry-meta, .d-event-sub, .d-event-meta, .stat-team, .d-stat-team,
+.match-item-meta, .d-sync-label, .sync-status-text {
+  font-size: 12px !important;
+  line-height: 1.45;
+}
+.player-name, .player-item, .a-table td, .stat-row, .d-stat-row { font-size: 14px; }
+.stat-num .lbl, .d-stat-num .lbl { font-size: 11px; }
+.empty-msg { font-size: 14px; }
+#saveIndicator, #eventCount, #dGoalCount, #teamCount { font-size: 12px !important; }
+.connect-sub, .connect-label, .d-team-role, .d-pen-badge, .pen-badge,
+.a-badge, .a-badge-past, .a-badge-upcoming, .a-table th {
+  font-size: 12px !important;
+}
+#dArenaRow { font-size: 12px !important; }
 
 .ax-icon {
   width: 1.08em;
@@ -155,9 +193,20 @@ header { padding: 8px 0 2px; }
   padding: 8px 5px;
   border: 0;
   border-radius: 10px;
-  font-size: 10px;
+  font-size: 13px;
 }
 .tab.active { background: #fff; border: 0; box-shadow: 0 2px 8px rgba(16,25,35,.1); }
+.tab.active { background: var(--red); color: #fff; }
+.tab.active .ax-icon { color: #fff; }
+.clock-btn.start { background: var(--green); box-shadow: 0 3px 12px rgba(19,165,101,.28); }
+.clock-btn.stop { background: var(--warn); border-color: rgba(255,255,255,.2); }
+.ctrl-btn.danger { color: var(--red); border-color: rgba(210,10,46,.28); background: var(--red-light); }
+.operator-logout {
+  min-height: 36px;
+  padding: 7px 10px !important;
+  font-size: 13px !important;
+  color: var(--muted) !important;
+}
 .section { padding: 18px; }
 .section-title, .d-section-title, .a-card-title { letter-spacing: 2px; }
 .entry-row, .d-event, .stat-row, .d-stat-row, .player-item { background: #f8fafc; border-color: var(--line); }
@@ -198,7 +247,7 @@ header { padding: 8px 0 2px; }
   border-radius: 9px;
   background: rgba(255,255,255,.1);
   color: #fff;
-  font-family: 'Bebas Neue', sans-serif;
+  font-family: 'Inter', sans-serif;
   font-size: 14px;
   letter-spacing: 1px;
   cursor: pointer;
@@ -226,7 +275,7 @@ header { padding: 8px 0 2px; }
 
 @media (min-width: 760px) {
   .tabs { grid-template-columns: repeat(6, 1fr); }
-  .tab { font-size: 11px; }
+  .tab { font-size: 13px; }
   .scoreboard, .d-scoreboard { gap: 18px; }
   .team-card, .d-team-card { padding-inline: 24px; }
   .score-display, .d-score { font-size: 104px; }
@@ -239,6 +288,7 @@ header { padding: 8px 0 2px; }
   .period-block { grid-column: 1; grid-row: 2; }
   .clock-controls { grid-column: 2; grid-row: 2; }
   .clock-btn { padding-inline: 12px; }
+  .tab { font-size: 12px !important; }
   .scoreboard, .d-scoreboard { gap: 6px; }
   .team-card, .d-team-card { padding: 16px 8px 12px; }
   .score-display, .d-score { font-size: clamp(68px, 21vw, 88px); }

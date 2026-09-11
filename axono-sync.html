@@ -563,7 +563,7 @@
       <div id="syncDot" style="width:8px;height:8px;border-radius:50%;background:#444;flex-shrink:0;" title="Stav připojení"></div>
       <span id="syncStatusText" class="sync-status-text">Nepřipojeno</span>
     </div>
-    <button onclick="logoutOperator()" style="background:transparent;border:0;color:#777;font-family:'Inter',sans-serif;font-size:11px;cursor:pointer;padding:5px;">odhlásit</button>
+    <button class="operator-logout" onclick="logoutOperator()" style="background:transparent;border:0;color:#777;font-family:'Inter',sans-serif;font-size:11px;cursor:pointer;padding:5px;">Odhlásit</button>
   </div>
 
   <!-- JOIN DIALOG -->
@@ -662,12 +662,12 @@
         <button class="team-opt" id="goalOptB" onclick="selectGoalTeam('B')">HOSTÉ</button>
       </div>
       <div class="form-row" style="align-items:center;gap:8px;">
-        <input class="field" id="scorerNumQuick" placeholder="# střelce" type="number" min="1" max="99" style="max-width:90px;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:16px;" />
+        <input class="field" id="scorerNumQuick" placeholder="# střelce" type="number" min="1" max="99" style="max-width:90px;font-family:'Inter',sans-serif;font-weight:700;font-size:16px;" />
         <span style="color:var(--muted);font-size:12px;flex-shrink:0;">nebo ze soupravy:</span>
         <select class="field" id="scorerSelect" style="flex:1;"></select>
       </div>
       <div class="form-row" style="align-items:center;gap:8px;">
-        <input class="field" id="assistNumQuick" placeholder="# asistence" type="number" min="1" max="99" style="max-width:90px;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:16px;" />
+        <input class="field" id="assistNumQuick" placeholder="# asistence" type="number" min="1" max="99" style="max-width:90px;font-family:'Inter',sans-serif;font-weight:700;font-size:16px;" />
         <span style="color:var(--muted);font-size:12px;flex-shrink:0;">nebo ze soupravy:</span>
         <select class="field" id="assistSelect" style="flex:1;"></select>
       </div>
@@ -685,7 +685,7 @@
         <button class="team-opt red" id="penOptB" onclick="selectPenTeam('B')">HOSTÉ</button>
       </div>
       <div class="form-row" style="align-items:center;gap:8px;">
-        <input class="field" id="penNumQuick" placeholder="# hráče" type="number" min="1" max="99" style="max-width:90px;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:16px;" />
+        <input class="field" id="penNumQuick" placeholder="# hráče" type="number" min="1" max="99" style="max-width:90px;font-family:'Inter',sans-serif;font-weight:700;font-size:16px;" />
         <span style="color:var(--muted);font-size:12px;flex-shrink:0;">nebo ze soupravy:</span>
         <select class="field" id="penPlayerSelect" style="flex:1;"></select>
       </div>
@@ -1099,7 +1099,7 @@ function selectRosterTeam(t) {
 function renderRosters() {
   ['A','B'].forEach(t => {
     const el = document.getElementById('roster'+t);
-    if (!state.rosters[t].length) { el.innerHTML='<div class="empty-msg" style="padding:8px;font-size:11px;">Prázdná soupisku.</div>'; return; }
+    if (!state.rosters[t].length) { el.innerHTML='<div class="empty-msg" style="padding:8px;font-size:11px;">Prázdná soupiska.</div>'; return; }
     el.innerHTML = [...state.rosters[t]].sort((a,b)=>Number(a.num)-Number(b.num)).map(p=>`
       <div class="player-item">
         <span class="player-num">#${esc(p.num)}</span>
